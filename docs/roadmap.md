@@ -69,14 +69,15 @@
 - JSONL logging per generation with best genome and population stats
 
 ## Phase 7: LLM-Assisted Interpretation
-**Status: 🔲 Planned**
+**Status: ✅ Complete**
 
-- Optional integration with LLM APIs for high-level reasoning
-- LLM receives environment summary + agent prediction errors + emergence events
-- LLM outputs natural-language interpretations of detected behaviors
-- Hybrid architecture: PC network for low-level perception/prediction,
-  LLM for behavioral analysis
-- Evaluation: does LLM interpretation match logged metrics?
+- `LLMInterpreter` class in `fabricpc_extensions/llm_interface.py`
+- OpenAI-compatible API (works with any provider)
+- Builds compact text summary from step, metrics, and event logs
+- `scripts/llm_interpret.py` CLI tool with `--summary-only`, `--output` flags
+- Configurable model, API base, temperature via env vars
+- Fallback analysis when no API key available
+- Interprets: behavioral patterns, emergence, learning dynamics, WorldModel trends
 
 ---
 
@@ -89,7 +90,7 @@ Phase 3 ────────────────────────
 Phase 4 ──────────────────────────────────────── ●
 Phase 5 ──────────────────────────────────────── ● (current)
 Phase 6 ──────────────────────────────────────── ●
-Phase 7 ────────────────────────────────────────── ○ (current)
+Phase 7 ──────────────────────────────────────── ●
 ```
 
 ## Engineering Principles

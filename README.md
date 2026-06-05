@@ -175,9 +175,14 @@ Events are logged to `logs/emergence_events.jsonl` with:
 ```
 FabricEmergenceLab/
 ├── fabricpc/                    # Predictive coding library (JAX)
-├── fabricpc_extensions/         # WorldModel, latent state, future modules
+├── fabricpc_extensions/         # WorldModel, agent, shared memory, comms, evolution, LLM
 │   ├── __init__.py
-│   └── world_model.py           # Compressed observation representation
+│   ├── world_model.py           # Latent state + transition learning
+│   ├── agent.py                 # Reusable PCAgent, memory, behavior tracker
+│   ├── shared_memory.py         # Cross-agent associative memory pool
+│   ├── communication.py         # Message passing, mutual information tracking
+│   ├── evolution.py             # PCGenome, Population, mutation, crossover
+│   └── llm_interface.py         # LLM API client for experiment interpretation
 ├── adapters/                    # Environment adapter pattern
 │   ├── __init__.py
 │   ├── environment_adapter.py   # Abstract base class
@@ -195,7 +200,9 @@ FabricEmergenceLab/
 ├── logs/                        # JSONL experiment logs
 │   └── analysis.py              # Log analysis tool
 ├── scripts/
-│   └── generate_emergence_report.py  # Report generator
+│   ├── generate_emergence_report.py  # Report generator
+│   ├── generate_report.py            # Legacy wrapper
+│   └── llm_interpret.py              # LLM-assisted behavior analysis
 ├── notebooks/                   # Analysis notebooks
 ├── CONTRIBUTING.md
 ├── CODE_OF_CONDUCT.md
@@ -215,7 +222,7 @@ FabricEmergenceLab/
 | 4 | WorldModel transition learning | ✅ |
 | 5 | Emergent communication protocols | ✅ |
 | 6 | Evolutionary graph mutation | ✅ |
-| 7 | LLM-assisted interpretation | 🔲 |
+| 7 | LLM-assisted interpretation | ✅ |
 | 8 | SimWorld integration | 🔬 |
 
 See [docs/roadmap.md](docs/roadmap.md) for details.
