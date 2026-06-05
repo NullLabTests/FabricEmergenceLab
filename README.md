@@ -157,6 +157,7 @@ flowchart LR
     PC -.-> CC[Message<br/>Broadcast]
     CC -.-> MI[Mutual Info<br/>Tracking]
 ```
+---
 
 ┌─────────────────────────────────────────────────────────────────┐
 │                   FabricEmergenceLab Data Flow                   │
