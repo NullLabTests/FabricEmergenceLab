@@ -1,88 +1,271 @@
 """
-Evolution Loop: Evolutionary optimization of predictive coding graphs.
+Evolution Loop — Phase 6: Evolutionary Graph Mutation.
 
-TODO Phase 4 and Phase 5:
-- Graph mutation: add/remove nodes and edges
-- Crossover between parent graph topologies
-- Fitness evaluation on memory_maze task
-- Population management with selection pressure
-- Persistent world model across generations
+Evolves PC network topologies via mutation, crossover, and tournament
+selection. Each genome encodes the network's hidden dimensions, learning
+rates, activation function, and topology. Fitness is measured by running
+episodes in the single-agent GridWorld.
+
+Usage:
+    POP_SIZE=10 GENERATIONS=5 python experiments/evolution_loop.py
 """
 
+import os
 import sys
+import json
+import math
+import random
 from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional
-from dataclasses import dataclass, field
+from typing import Dict, List
+
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
+
+import numpy as np
+import jax
+import jax.numpy as jnp
+import optax
+
+jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from fabricpc.nodes import Linear
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.graph_initialization.state_initializer import (
+    initialize_graph_state,
+)
+from fabricpc.core.inference import InferenceSGD, run_inference
+from fabricpc.core.learning import compute_local_weight_gradients
+from fabricpc.core.energy import GaussianEnergy
+from fabricpc.core.activations import TanhActivation, IdentityActivation
 
-@dataclass
-class Genome:
-    """
-    Encodes a predictive coding graph topology.
+from fabricpc_extensions.evolution import Population, PCGenome
 
-    TODO Phase 4:
-    - node_types: List[str] — types of nodes in the graph
-    - edge_matrix: List[Tuple[int, int]] — adjacency list
-    - hyperparams: Dict[str, float] — eta_infer, infer_steps, etc.
-    - mutation_rate: float — per-edge mutation probability
-    """
+GRID_SIZE = 20
+WINDOW_SIZE = 3
+OBS_DIM = WINDOW_SIZE * WINDOW_SIZE
+N_STEPS = 200
+EXPLORE_RATE = 0.2
+MEMORY_TOP_K = 3
+N_EPISODES_EVAL = int(os.environ.get("EVAL_EPISODES", "1"))
+POP_SIZE = int(os.environ.get("POP_SIZE", "8"))
+GENERATIONS = int(os.environ.get("GENERATIONS", "5"))
 
-    node_types: List[str] = field(default_factory=lambda: ["Linear", "Linear"])
-    edge_matrix: List[Tuple[int, int]] = field(default_factory=lambda: [(0, 1)])
-    hyperparams: Dict[str, float] = field(default_factory=dict)
+LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-    def mutate(self) -> "Genome":
-        """Return a mutated copy of this genome."""
-        raise NotImplementedError("Phase 4: implement graph mutation")
-
-    def crossover(self, other: "Genome") -> Tuple["Genome", "Genome"]:
-        """Return two child genomes via crossover."""
-        raise NotImplementedError("Phase 4: implement crossover")
+EMPTY = 0
+AGENT = 1
+GOAL = 2
 
 
-class EvolutionLoop:
-    """
-    Population-level evolution of PC graph topologies.
+def build_agent(genome: PCGenome, rng_key: jax.Array):
+    """Build a PCAgent from a genome specification."""
+    activation_cls = (
+        TanhActivation() if genome.activation == "tanh" else IdentityActivation()
+    )
+    eta_infer = genome.eta_infer
+    eta_learn = genome.eta_learn
+    hidden_dim = genome.hidden_dim
+    infer_steps = 20
 
-    TODO Phase 4:
-    - population: List[Genome] — current generation
-    - fitness_scores: List[float] — evaluated fitness per genome
-    - evaluate(): run memory_maze for each genome, return total reward
-    - select(): tournament or roulette selection
-    - evolve(): mutate + crossover → next generation
+    obs_in = Linear(
+        shape=(OBS_DIM,), name="obs_in",
+        activation=IdentityActivation(),
+        energy=GaussianEnergy(),
+    )
+    hidden = Linear(
+        shape=(hidden_dim,), name="hidden",
+        activation=activation_cls,
+        energy=GaussianEnergy(),
+    )
+    obs_out = Linear(
+        shape=(OBS_DIM,), name="obs_out",
+        activation=IdentityActivation(),
+        energy=GaussianEnergy(),
+    )
 
-    TODO Phase 5 — Persistent world model:
-    - Maintain a shared world state across generations
-    - Agents inherit knowledge from parents
-    - Cumulative learning over evolutionary timescales
-    """
+    edges = [
+        Edge(source=obs_in, target=hidden.slot("in")),
+        Edge(source=hidden, target=obs_out.slot("in")),
+    ]
 
-    def __init__(self, pop_size: int = 20, n_generations: int = 50):
-        self.pop_size = pop_size
-        self.n_generations = n_generations
-        self.population: List[Genome] = []
-        self.fitness: List[float] = []
-        self.log_path = Path(__file__).resolve().parent.parent / "logs" / "evolution.jsonl"
+    if genome.n_hidden_layers == 2:
+        hidden2 = Linear(
+            shape=(hidden_dim,), name="hidden2",
+            activation=activation_cls,
+            energy=GaussianEnergy(),
+        )
+        edges.append(Edge(source=hidden, target=hidden2.slot("in")))
+        edges.append(Edge(source=hidden2, target=obs_out.slot("in")))
 
-    def initialize_population(self):
-        """Create initial random genomes."""
-        raise NotImplementedError("Phase 4: implement population init")
+    if genome.use_skip:
+        edges.append(Edge(source=obs_in, target=obs_out.slot("in")))
 
-    def evaluate_fitness(self) -> List[float]:
-        """Run each genome through memory_maze and return scores."""
-        raise NotImplementedError("Phase 4: implement fitness eval")
+    structure = graph(
+        nodes=[obs_in, hidden, obs_out],
+        edges=edges,
+        task_map=TaskMap(x=obs_in, y=obs_out),
+        inference=InferenceSGD(eta_infer=eta_infer, infer_steps=infer_steps),
+    )
 
-    def select_parents(self) -> List[Genome]:
-        """Select parents for next generation."""
-        raise NotImplementedError("Phase 4: implement selection")
+    pk, rng_key = jax.random.split(rng_key)
+    params = initialize_params(structure, pk)
+    optimizer = optax.adam(eta_learn)
+    opt_state = optimizer.init(params)
 
-    def run(self):
-        """Run evolutionary loop."""
-        raise NotImplementedError("Phase 4: implement evolution loop")
+    return structure, params, optimizer, opt_state, rng_key
+
+
+def fitness_function(genome: PCGenome) -> float:
+    """Evaluate a genome by running episodes in GridWorld."""
+    key = jax.random.PRNGKey(random.randint(0, 1000000))
+    structure, params, optimizer, opt_state, key = build_agent(genome, key)
+
+    total_error = 0.0
+    total_reward = 0.0
+    n_steps_total = 0
+
+    for ep in range(N_EPISODES_EVAL):
+        grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int32)
+        agent_pos = (0, 0)
+        grid[agent_pos] = AGENT
+
+        goal_pos = _random_free(grid, agent_pos)
+        grid[goal_pos] = GOAL
+
+        prev_obs = _observe(grid, agent_pos)
+        memory_keys = [prev_obs.copy()]
+
+        for step in range(N_STEPS):
+            ax, ay = agent_pos
+            gx, gy = goal_pos
+            dx, dy = gx - ax, gy - ay
+
+            if abs(dx) > abs(dy):
+                action = 2 if dx > 0 else 3
+            else:
+                action = 1 if dy > 0 else 0
+
+            if random.random() < EXPLORE_RATE:
+                action = random.randint(0, 3)
+
+            ddx, ddy = [(0, -1), (0, 1), (-1, 0), (1, 0)][action]
+            nx, ny = ax + ddx, ay + ddy
+
+            grid[agent_pos] = EMPTY
+            if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE and grid[ny, nx] != 3:
+                agent_pos = (nx, ny)
+
+            reward = 0.0
+            if agent_pos == goal_pos:
+                reward = 10.0
+                grid[goal_pos] = EMPTY
+                goal_pos = _random_free(grid, agent_pos)
+                grid[goal_pos] = GOAL
+
+            grid[agent_pos] = AGENT
+            curr_obs = _observe(grid, agent_pos)
+
+            batch_size = 1
+            obs_j = jnp.array(prev_obs, dtype=jnp.float32).reshape(1, -1)
+            next_j = jnp.array(curr_obs, dtype=jnp.float32).reshape(1, -1)
+            clamps = {
+                structure.task_map["x"]: obs_j,
+                structure.task_map["y"]: next_j,
+            }
+            sk, key = jax.random.split(key)
+            init_state = initialize_graph_state(
+                structure, batch_size, sk, clamps=clamps, params=params,
+            )
+            final_state = run_inference(params, init_state, clamps, structure)
+            energy = 0.0
+            for node_name in structure.nodes:
+                node = structure.nodes[node_name]
+                if node.node_info.in_degree > 0:
+                    energy += float(jnp.sum(final_state.nodes[node_name].energy))
+            prediction_error = energy / batch_size
+
+            grads = compute_local_weight_gradients(params, final_state, structure)
+            updates, opt_state = optimizer.update(grads, opt_state, params)
+            params = optax.apply_updates(params, updates)
+
+            total_error += prediction_error
+            total_reward += reward
+            n_steps_total += 1
+            prev_obs = curr_obs
+
+    avg_error = total_error / max(n_steps_total, 1)
+    avg_reward = total_reward / max(N_EPISODES_EVAL, 1)
+
+    # Fitness = negative error + reward bonus
+    fitness = -avg_error + 0.05 * avg_reward
+    return fitness
+
+
+def _random_free(grid: np.ndarray, exclude: tuple) -> tuple:
+    h, w = grid.shape
+    while True:
+        x = random.randint(0, w - 1)
+        y = random.randint(0, h - 1)
+        if (x, y) != exclude and grid[y, x] == EMPTY:
+            return (x, y)
+
+
+def _observe(grid: np.ndarray, pos: tuple) -> np.ndarray:
+    x, y = pos
+    half = WINDOW_SIZE // 2
+    obs = np.zeros((WINDOW_SIZE, WINDOW_SIZE), dtype=np.float32)
+    for dy in range(-half, half + 1):
+        for dx in range(-half, half + 1):
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE:
+                obs[dy + half, dx + half] = float(grid[ny, nx])
+    return obs.flatten()
+
+
+def main():
+    print(f"FabricEmergenceLab — Evolution Loop (Phase 6)")
+    print(f"{'='*60}")
+    print(f"  Population:  {POP_SIZE}")
+    print(f"  Generations: {GENERATIONS}")
+    print(f"  Eval ep:     {N_EPISODES_EVAL}")
+    print(f"  Steps/ep:    {N_STEPS}")
+    print(f"{'='*60}")
+
+    pop = Population(size=POP_SIZE, seed=42)
+    log_path = LOG_DIR / "evolution_log.jsonl"
+
+    with open(log_path, "w") as f:
+        for gen in range(GENERATIONS):
+            print(f"\n--- Generation {gen + 1}/{GENERATIONS} ---")
+
+            pop.evaluate_all(
+                fitness_fn=lambda g, eps: fitness_function(g),
+                verbose=True,
+            )
+            pop.evolve()
+
+            stats = pop.stats()
+            stats["genomes"] = [g.to_dict() for g in pop.genomes]
+            f.write(json.dumps(stats) + "\n")
+            f.flush()
+
+            print(f"  Best fitness: {stats['best_fitness']:.4f}")
+            print(f"  Avg fitness:  {stats['avg_fitness']:.4f}")
+
+    best_idx = max(range(len(pop.genomes)), key=lambda i: pop.fitness[i])
+    best_g = pop.genomes[best_idx]
+    print(f"\n{'='*60}")
+    print(f"  EVOLUTION COMPLETE")
+    print(f"{'='*60}")
+    print(f"  Best genome (fitness={pop.fitness[best_idx]:.4f}):")
+    for k, v in best_g.to_dict().items():
+        print(f"    {k}: {v}")
+    print(f"  Log: {log_path}")
 
 
 if __name__ == "__main__":
-    print("Evolution Loop — placeholder for Phase 4+ experiments.")
-    print("Run `python experiments/memory_maze.py` for the working demo.")
+    main()

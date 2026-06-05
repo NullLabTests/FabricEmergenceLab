@@ -58,14 +58,15 @@
 - Integrated into emergence_lab.py with pairwise MI logging
 
 ## Phase 6: Evolutionary Graph Mutation
-**Status: 🔲 Planned**
+**Status: ✅ Complete**
 
-- Population of PC graph topologies (node types, edge sets, hyperparameters)
-- Mutation: add/remove nodes and edges, tweak hyperparameters
-- Crossover: combine parent graph structures
-- Fitness: cumulative reward + inverse prediction error on memory_maze
-- Tournament selection, elitism
-- Track best genome across generations
+- `PCGenome` dataclass encoding network topology (hidden_dim, layers, lr, activation, skip)
+- Mutation: perturb hidden_dim, toggle layers, scale LR, toggle activation/skip
+- Crossover: averaged numerical params + random categorical selection
+- `Population` manager with tournament selection, elitism, generational loop
+- Fitness = -avg_error + reward bonus evaluated on GridWorld
+- `experiments/evolution_loop.py` — full evolutionary experiment
+- JSONL logging per generation with best genome and population stats
 
 ## Phase 7: LLM-Assisted Interpretation
 **Status: 🔲 Planned**
@@ -87,8 +88,8 @@ Phase 2 ────────────────────────
 Phase 3 ──────────────────────────────────────── ●
 Phase 4 ──────────────────────────────────────── ●
 Phase 5 ──────────────────────────────────────── ● (current)
-Phase 6 ────────────────────────────────────────── ○
-Phase 7 ────────────────────────────────────────── ○
+Phase 6 ──────────────────────────────────────── ●
+Phase 7 ────────────────────────────────────────── ○ (current)
 ```
 
 ## Engineering Principles

@@ -214,7 +214,7 @@ FabricEmergenceLab/
 | 3 | Shared associative memory | ✅ |
 | 4 | WorldModel transition learning | ✅ |
 | 5 | Emergent communication protocols | ✅ |
-| 6 | Evolutionary graph mutation | 🔲 |
+| 6 | Evolutionary graph mutation | ✅ |
 | 7 | LLM-assisted interpretation | 🔲 |
 | 8 | SimWorld integration | 🔬 |
 
