@@ -225,6 +225,28 @@ Generation 2 — Best fitness: -9.80
 ★ Evolutionary emergence: fitness improved 6× over 5 generations
 ```
 
+### Phase 8.1: Physics Emergence — Continuous 2D Agents
+
+```
+FabricEmergenceLab — Physics Emergence (Phase 8.1)
+============================================================
+  World:       400x300
+  Agents:      2
+  Objects:     2
+  Episodes:    2
+  Steps/ep:    100
+============================================================
+
+Episode 1 — Agent 0: avg_err=21026.2 reward=3.2 explored=4 cells
+            Agent 1: avg_err=30780.3 reward=7.3 explored=6 cells
+Episode 2 — Agent 0: avg_err=22767.7 reward=9.3 explored=7 cells
+            Agent 1: avg_err=19204.9 reward=7.3 explored=6 cells
+
+★ Key finding: PC networks do NOT converge in raw continuous space
+  (errors ∈ [19k, 30k] vs GridWorld ∈ [0.001, 0.2]).
+  Observation normalization is required for physics emergence.
+```
+
 ### Phase 7: LLM Interpretation
 
 ```

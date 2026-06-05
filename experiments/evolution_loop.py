@@ -10,7 +10,9 @@ Usage:
     POP_SIZE=10 GENERATIONS=5 python experiments/evolution_loop.py
 """
 
+import argparse
 import json
+import math
 import os
 import random
 import sys
@@ -47,9 +49,6 @@ OBS_DIM = WINDOW_SIZE * WINDOW_SIZE
 N_STEPS = 200
 EXPLORE_RATE = 0.2
 MEMORY_TOP_K = 3
-N_EPISODES_EVAL = int(os.environ.get("EVAL_EPISODES", "1"))
-POP_SIZE = int(os.environ.get("POP_SIZE", "8"))
-GENERATIONS = int(os.environ.get("GENERATIONS", "5"))
 
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -224,21 +223,37 @@ def _observe(grid: np.ndarray, pos: tuple) -> np.ndarray:
     return obs.flatten()
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="FabricEmergenceLab — Evolution Loop (Phase 6)")
+    parser.add_argument("--pop-size", type=int, default=int(os.environ.get("POP_SIZE", "8")),
+                        help="Population size (default: 8, env: POP_SIZE)")
+    parser.add_argument("--generations", type=int, default=int(os.environ.get("GENERATIONS", "5")),
+                        help="Number of generations (default: 5, env: GENERATIONS)")
+    parser.add_argument("--eval-episodes", type=int, default=int(os.environ.get("EVAL_EPISODES", "1")),
+                        help="Episodes per evaluation (default: 1, env: EVAL_EPISODES)")
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+    pop_size = args.pop_size
+    generations = args.generations
+    eval_episodes = args.eval_episodes
+
     print("FabricEmergenceLab — Evolution Loop (Phase 6)")
     print(f"{'='*60}")
-    print(f"  Population:  {POP_SIZE}")
-    print(f"  Generations: {GENERATIONS}")
-    print(f"  Eval ep:     {N_EPISODES_EVAL}")
+    print(f"  Population:  {pop_size}")
+    print(f"  Generations: {generations}")
+    print(f"  Eval ep:     {eval_episodes}")
     print(f"  Steps/ep:    {N_STEPS}")
     print(f"{'='*60}")
 
-    pop = Population(size=POP_SIZE, seed=42)
+    pop = Population(size=pop_size, seed=42)
     log_path = LOG_DIR / "evolution_log.jsonl"
 
     with open(log_path, "w") as f:
-        for gen in range(GENERATIONS):
-            print(f"\n--- Generation {gen + 1}/{GENERATIONS} ---")
+        for gen in range(generations):
+            print(f"\n--- Generation {gen + 1}/{generations} ---")
 
             pop.evaluate_all(
                 fitness_fn=lambda g, eps: fitness_function(g),

@@ -21,6 +21,7 @@ Emergence Observatory:
 Requires FabricPC installed (pip install -e fabricpc[all,cpu]).
 """
 
+import argparse
 import json
 import math
 import os
@@ -70,7 +71,6 @@ METRIC_LOG = LOG_DIR / "emergence_metrics.jsonl"
 EVENT_LOG = LOG_DIR / "emergence_events.jsonl"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-N_EPISODES = int(os.environ.get("N_EPISODES", "3"))
 N_STEPS = 200
 INFER_STEPS = 20
 ETA_INFER = 0.05
@@ -438,12 +438,12 @@ def compute_episode_metrics(
 def run_episode(
     episode: int,
     agent: PCAgent,
-    step_log_file,
-    metric_log_file,
-    event_log_file,
+    step_log,
+    metric_log,
+    event_log,
+    n_episodes: int = 3,
 ) -> Dict:
     world = GridWorld.create()
-    rng_key = jax.random.PRNGKey(42 + episode)
     random.seed(42 + episode)
     np.random.seed(42 + episode)
 
@@ -460,7 +460,7 @@ def run_episode(
     curiosity = agent.pos_memory.visit(world.agent_pos)
 
     print(f"\n{'='*60}")
-    print(f"  Episode {episode + 1}/{N_EPISODES}")
+    print(f"  Episode {episode + 1}/{n_episodes}")
     print(f"{'='*60}")
 
     for step in range(N_STEPS):
@@ -524,7 +524,7 @@ def run_episode(
             "wm_state_count": wm_update.get("state_count", 0),
             "wm_transition_loss": round(wm_update.get("transition_loss", 0.0), 6),
         }
-        step_log_file.write(json.dumps(entry) + "\n")
+        step_log.write(json.dumps(entry) + "\n")
 
         if step % 25 == 0 and step > 0:
             avg = np.mean(window_errors)
@@ -540,8 +540,8 @@ def run_episode(
         events = agent.behavior.check_emergence_event(episode, step)
         if events:
             for ev in events:
-                event_log_file.write(json.dumps(ev) + "\n")
-                event_log_file.flush()
+                event_log.write(json.dumps(ev) + "\n")
+                event_log.flush()
                 print(f"  ★ Emergence: {ev['event_type']} (score={ev['novelty_score']})")
 
         prev_obs = curr_obs
@@ -550,8 +550,8 @@ def run_episode(
     metrics = compute_episode_metrics(agent, step_errors, step_rewards, goals_reached)
     metrics["episode"] = episode
 
-    metric_log_file.write(json.dumps(metrics) + "\n")
-    metric_log_file.flush()
+    metric_log.write(json.dumps(metrics) + "\n")
+    metric_log.flush()
 
     print(f"\n  Episode {episode + 1} summary:")
     print(f"    avg error:  {metrics['avg_prediction_error']:.4f}")
@@ -568,14 +568,24 @@ def run_episode(
     return metrics
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="FabricEmergenceLab — Memory Maze (Phase 1)")
+    parser.add_argument("--episodes", type=int, default=int(os.environ.get("N_EPISODES", "3")),
+                        help="Number of episodes (default: 3, env: N_EPISODES)")
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+    n_episodes = args.episodes
+
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     print("FabricEmergenceLab — Memory Maze")
     print(f"{'='*60}")
     print(f"  Grid:        {GRID_SIZE}x{GRID_SIZE}")
-    print(f"  Episodes:    {N_EPISODES}")
+    print(f"  Episodes:    {n_episodes}")
     print(f"  Steps/ep:    {N_STEPS}")
-    print(f"  Total steps: {N_EPISODES * N_STEPS}")
+    print(f"  Total steps: {n_episodes * N_STEPS}")
     print(f"  Window:      {WINDOW_SIZE}x{WINDOW_SIZE}")
     print(f"  Explore:     {EXPLORE_RATE*100:.0f}%")
     print(f"{'='*60}")
@@ -592,8 +602,8 @@ def main():
     with open(STEP_LOG, step_log_mode) as step_f, \
          open(METRIC_LOG, "a") as metric_f, \
          open(EVENT_LOG, "a") as event_f:
-        for ep in range(N_EPISODES):
-            metrics = run_episode(ep, agent, step_f, metric_f, event_f)
+        for ep in range(n_episodes):
+            metrics = run_episode(ep, agent, step_f, metric_f, event_f, n_episodes)
             all_metrics.append(metrics)
 
     print(f"\n{'='*60}")

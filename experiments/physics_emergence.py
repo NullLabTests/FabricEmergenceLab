@@ -15,6 +15,7 @@ Usage:
     N_AGENTS=2 N_OBJECTS=3 python experiments/physics_emergence.py
 """
 
+import argparse
 import json
 import math
 import os
@@ -35,18 +36,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from fabricpc_extensions.agent import PCAgent
 from fabricpc_extensions.physics_environment import PhysicsEnvironment
 
-N_AGENTS = int(os.environ.get("N_AGENTS", "2"))
-N_OBJECTS = int(os.environ.get("N_OBJECTS", "2"))
-N_GOALS = int(os.environ.get("N_GOALS", "1"))
-N_EPISODES = int(os.environ.get("N_EPISODES", "3"))
-N_STEPS = int(os.environ.get("N_STEPS", "300"))
-EXPLORE_STD = float(os.environ.get("EXPLORE_STD", "30.0"))
-HIDDEN_DIM = int(os.environ.get("HIDDEN_DIM", "16"))
-WORLD_WIDTH = int(os.environ.get("WORLD_WIDTH", "400"))
-WORLD_HEIGHT = int(os.environ.get("WORLD_HEIGHT", "300"))
-
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+N_AGENTS = 2
+N_OBJECTS = 2
+N_GOALS = 1
+N_EPISODES = 3
+N_STEPS = 300
+EXPLORE_STD = 30.0
+HIDDEN_DIM = 16
+WORLD_WIDTH = 400
+WORLD_HEIGHT = 300
 
 BOUNDARY_RADIUS = 600.0  # curiosity zone radius from origin
 
@@ -176,7 +177,42 @@ def run_physics_episode(
     return metrics
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="FabricEmergenceLab — Physics Emergence (Phase 8.1)")
+    parser.add_argument("--episodes", type=int, default=int(os.environ.get("N_EPISODES", "3")),
+                        help="Number of episodes (default: 3, env: N_EPISODES)")
+    parser.add_argument("--steps", type=int, default=int(os.environ.get("N_STEPS", "300")),
+                        help="Steps per episode (default: 300, env: N_STEPS)")
+    parser.add_argument("--agents", type=int, default=int(os.environ.get("N_AGENTS", "2")),
+                        help="Number of agents (default: 2, env: N_AGENTS)")
+    parser.add_argument("--objects", type=int, default=int(os.environ.get("N_OBJECTS", "2")),
+                        help="Number of physics objects (default: 2, env: N_OBJECTS)")
+    parser.add_argument("--goals", type=int, default=int(os.environ.get("N_GOALS", "1")),
+                        help="Number of goal zones (default: 1, env: N_GOALS)")
+    parser.add_argument("--explore-std", type=float, default=float(os.environ.get("EXPLORE_STD", "30.0")),
+                        help="Exploration noise std (default: 30.0, env: EXPLORE_STD)")
+    parser.add_argument("--hidden-dim", type=int, default=int(os.environ.get("HIDDEN_DIM", "16")),
+                        help="PC network hidden dim (default: 16, env: HIDDEN_DIM)")
+    parser.add_argument("--world-width", type=int, default=int(os.environ.get("WORLD_WIDTH", "400")),
+                        help="World width in pixels (default: 400, env: WORLD_WIDTH)")
+    parser.add_argument("--world-height", type=int, default=int(os.environ.get("WORLD_HEIGHT", "300")),
+                        help="World height in pixels (default: 300, env: WORLD_HEIGHT)")
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+    global N_AGENTS, N_OBJECTS, N_GOALS, N_EPISODES, N_STEPS, EXPLORE_STD, HIDDEN_DIM, WORLD_WIDTH, WORLD_HEIGHT
+    N_AGENTS = args.agents
+    N_OBJECTS = args.objects
+    N_GOALS = args.goals
+    N_EPISODES = args.episodes
+    N_STEPS = args.steps
+    EXPLORE_STD = args.explore_std
+    HIDDEN_DIM = args.hidden_dim
+    WORLD_WIDTH = args.world_width
+    WORLD_HEIGHT = args.world_height
+
     print("FabricEmergenceLab — Physics Emergence (Phase 8.1)")
     print(f"{'='*60}")
     print(f"  World:       {WORLD_WIDTH}x{WORLD_HEIGHT}")

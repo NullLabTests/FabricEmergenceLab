@@ -24,7 +24,9 @@ Usage:
     N_AGENTS=4 N_EPISODES=3 python experiments/emergence_lab.py
 """
 
+import argparse
 import json
+import math
 import os
 import random
 import sys
@@ -44,16 +46,16 @@ from fabricpc_extensions.agent import PCAgent, compute_episode_metrics
 from fabricpc_extensions.communication import CommunicationChannel
 from fabricpc_extensions.shared_memory import SharedMemory
 
-N_AGENTS = int(os.environ.get("N_AGENTS", "4"))
-GRID_SIZE = int(os.environ.get("GRID_SIZE", "24"))
 WINDOW_SIZE = 3
 OBS_DIM = WINDOW_SIZE * WINDOW_SIZE
-N_EPISODES = int(os.environ.get("N_EPISODES", "3"))
 N_STEPS = 200
 EXPLORE_RATE = 0.2
 MSG_DIM = 4
-SOCIAL_OBS_DIM = N_AGENTS  # one error signal per agent (including self)
-COMMS_OBS_DIM = (N_AGENTS - 1) * MSG_DIM  # messages from other agents
+N_AGENTS = 4
+GRID_SIZE = 24
+N_EPISODES = 3
+SOCIAL_OBS_DIM = N_AGENTS
+COMMS_OBS_DIM = (N_AGENTS - 1) * MSG_DIM
 TOTAL_OBS_DIM = OBS_DIM + SOCIAL_OBS_DIM + COMMS_OBS_DIM
 
 EMPTY = 0
@@ -218,6 +220,7 @@ def run_multi_agent_episode(
     step_logs: List,
     pairwise_log: object,
     event_log_file,
+    n_episodes: int = 3,
 ) -> Dict:
     world.reset()
     comms_channel.reset()
@@ -243,7 +246,7 @@ def run_multi_agent_episode(
         shared_mem.store(prev_obs[i], agent_id=i, meta={"pos": world.agent_positions[i]})
 
     print(f"\n{'='*60}")
-    print(f"  Episode {episode + 1}/{N_EPISODES}  ({N_AGENTS} agents, comms channel)")
+    print(f"  Episode {episode + 1}/{n_episodes}  ({N_AGENTS} agents, comms channel)")
     print(f"{'='*60}")
 
     for step in range(N_STEPS):
@@ -420,14 +423,35 @@ def run_multi_agent_episode(
     return all_metrics
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="FabricEmergenceLab — Emergence Lab (Phases 2+3+5)")
+    parser.add_argument("--episodes", type=int, default=int(os.environ.get("N_EPISODES", "3")),
+                        help="Number of episodes (default: 3, env: N_EPISODES)")
+    parser.add_argument("--agents", type=int, default=int(os.environ.get("N_AGENTS", "4")),
+                        help="Number of agents (default: 4, env: N_AGENTS)")
+    parser.add_argument("--grid-size", type=int, default=int(os.environ.get("GRID_SIZE", "24")),
+                        help="Grid world size (default: 24, env: GRID_SIZE)")
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+    global N_AGENTS, GRID_SIZE, N_EPISODES, SOCIAL_OBS_DIM, COMMS_OBS_DIM, TOTAL_OBS_DIM
+    N_AGENTS = args.agents
+    GRID_SIZE = args.grid_size
+    N_EPISODES = args.episodes
+    SOCIAL_OBS_DIM = N_AGENTS
+    COMMS_OBS_DIM = (N_AGENTS - 1) * MSG_DIM
+    TOTAL_OBS_DIM = OBS_DIM + SOCIAL_OBS_DIM + COMMS_OBS_DIM
+    n_episodes = N_EPISODES
+
     print("FabricEmergenceLab — Emergence Lab (Phase 2: Multi-Agent)")
     print(f"{'='*60}")
     print(f"  Grid:        {GRID_SIZE}x{GRID_SIZE}")
     print(f"  Agents:      {N_AGENTS}")
-    print(f"  Episodes:    {N_EPISODES}")
+    print(f"  Episodes:    {n_episodes}")
     print(f"  Steps/ep:    {N_STEPS}")
-    print(f"  Total steps: {N_EPISODES * N_STEPS}")
+    print(f"  Total steps: {n_episodes * N_STEPS}")
     print(f"  Obs dim:     {TOTAL_OBS_DIM} (grid {OBS_DIM} + social {SOCIAL_OBS_DIM} + comms {COMMS_OBS_DIM})")
     print(f"  Explore:     {EXPLORE_RATE*100:.0f}%")
     print(f"{'='*60}")
@@ -457,11 +481,10 @@ def main():
     all_episode_metrics = []
 
     try:
-        for ep in range(N_EPISODES):
-            ep_metrics = run_multi_agent_episode(ep, agents, world, shared_mem, comms_channel, step_logs, pairwise_log, event_log)
+        for ep in range(n_episodes):
+            ep_metrics = run_multi_agent_episode(ep, agents, world, shared_mem, comms_channel, step_logs, pairwise_log, event_log, n_episodes)
             all_episode_metrics.extend(ep_metrics)
 
-            # write per-episode metric summary
             metric_path = LOG_DIR / "emergence_metrics.jsonl"
             with open(metric_path, "a") as mf:
                 for m in ep_metrics:
@@ -472,7 +495,6 @@ def main():
         pairwise_log.close()
         event_log.close()
 
-    # final summary
     print(f"\n{'='*60}")
     print("  EXPERIMENT COMPLETE")
     print(f"{'='*60}")

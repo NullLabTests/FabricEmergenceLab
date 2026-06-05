@@ -207,7 +207,53 @@ class PhysicsEnvironment:
         for g in self.goals:
             if not g["collected"]:
                 parts.extend([g["position"][0], g["position"][1]])
-        return np.array(parts, dtype=np.float32)
+        obs = np.array(parts, dtype=np.float32)
+        return self._normalize_obs(obs)
+
+    def _normalize_obs(self, obs: np.ndarray) -> np.ndarray:
+        """
+        Normalize raw physics observations to [≈-1, ≈1] range.
+
+        Positions and goal locations are divided by world diagonal.
+        Velocities are clipped to ±200 and divided by 200.
+        Forces are clipped to ±200 and divided by 200.
+        cos/sin are already [-1, 1].
+        """
+        diag = math.sqrt(self.width ** 2 + self.height ** 2)
+        n_agents = len(self.agents)
+        n_objects = len(self.objects)
+        n_goals = len(self.goals)
+        agent_stride = 8
+        obj_stride = 4
+        goal_stride = 2
+
+        idx = 0
+        # normalize agent observations
+        for _ in range(n_agents):
+            obs[idx] /= diag       # x / diagonal
+            obs[idx + 1] /= diag   # y / diagonal
+            obs[idx + 2] = np.clip(obs[idx + 2] / 200.0, -1.0, 1.0)  # vx
+            obs[idx + 3] = np.clip(obs[idx + 3] / 200.0, -1.0, 1.0)  # vy
+            # idx+4, idx+5 = cos(angle), sin(angle) — already [-1, 1]
+            obs[idx + 6] = np.clip(obs[idx + 6] / 200.0, -1.0, 1.0)  # fx
+            obs[idx + 7] = np.clip(obs[idx + 7] / 200.0, -1.0, 1.0)  # fy
+            idx += agent_stride
+
+        # normalize object observations
+        for _ in range(n_objects):
+            obs[idx] /= diag
+            obs[idx + 1] /= diag
+            obs[idx + 2] = np.clip(obs[idx + 2] / 200.0, -1.0, 1.0)
+            obs[idx + 3] = np.clip(obs[idx + 3] / 200.0, -1.0, 1.0)
+            idx += obj_stride
+
+        # normalize goal observations
+        for _ in range(n_goals):
+            obs[idx] /= diag
+            obs[idx + 1] /= diag
+            idx += goal_stride
+
+        return obs
 
     def step(self, actions: List[Tuple[float, float]]) -> Tuple[np.ndarray, List[float], bool, Dict]:
         """
