@@ -1,80 +1,466 @@
 """
-Emergence Lab: Multi-agent emergence experiments.
+Emergence Lab — Phases 2+3: Multi-agent environment with shared memory.
 
-TODO Phase 2 — Multiple interacting agents:
-- Spawn N agents in a shared world
-- Each agent operates its own FabricPC network
-- Agents can observe each other's positions
-- Log pairwise prediction errors as a proxy for "communication"
-- Detect emergent coordination (e.g., agents avoiding each other)
+Phase 2:
+    N agents coexist in a shared GridWorld, each with its own FabricPC
+    predictive-coding network. Agents observe local 3x3 windows (which
+    include other agents) and each other's prediction errors as a social
+    signal. Collisions are prevented; each agent pursues its own goal.
 
-TODO Phase 4 — Evolutionary graph mutation:
-- Maintain a population of graph topologies
-- Crossover/mutate edge sets between generations
-- Fitness = cumulative prediction error + reward
-- Select top-k graphs each generation
+Phase 3:
+    A SharedMemory pool is accessible by all agents. Each agent writes
+    observations and predictions to the shared store and queries it for
+    relevant past experiences across all agents. Cross-agent retrieval
+    metrics measure how much agents benefit from each other's data.
+
+Emergence Observatory:
+    Logs per-agent step data to logs/emergence_agent_*.jsonl
+    Logs pairwise metrics to logs/emergence_pairwise.jsonl
+    Logs per-episode metrics and emergence events
+    Detects coordination, collision-avoidance, social emergence,
+    and cross-agent memory utilization
+
+Usage:
+    N_AGENTS=4 N_EPISODES=3 python experiments/emergence_lab.py
 """
 
+import os
 import sys
+import json
+import math
+import random
+from collections import defaultdict, Counter
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Dict, List, Tuple, Optional
+
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
+
+import numpy as np
+import jax
+import jax.numpy as jnp
+
+jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from fabricpc_extensions.agent import PCAgent, compute_episode_metrics
+from fabricpc_extensions.shared_memory import SharedMemory
 
-class AgentSpec:
-    """Specification for an agent in the emergence lab."""
+N_AGENTS = int(os.environ.get("N_AGENTS", "4"))
+GRID_SIZE = int(os.environ.get("GRID_SIZE", "24"))
+WINDOW_SIZE = 3
+OBS_DIM = WINDOW_SIZE * WINDOW_SIZE
+N_EPISODES = int(os.environ.get("N_EPISODES", "3"))
+N_STEPS = 200
+EXPLORE_RATE = 0.2
+SOCIAL_OBS_DIM = N_AGENTS  # one error signal per agent (including self)
+TOTAL_OBS_DIM = OBS_DIM + SOCIAL_OBS_DIM
 
-    def __init__(
-        self,
-        agent_id: int,
-        hidden_dim: int = 16,
-        infer_steps: int = 20,
-        eta_infer: float = 0.05,
-    ):
-        self.agent_id = agent_id
-        self.hidden_dim = hidden_dim
-        self.infer_steps = infer_steps
-        self.eta_infer = eta_infer
+EMPTY = 0
+AGENT = 1
+GOAL = 2
+WALL = 3
+
+LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 
-class EmergenceLab:
-    """
-    Orchestrates multi-agent experiments.
+class MultiAgentWorld:
+    """Shared GridWorld with N agents, each with its own goal."""
 
-    TODO:
-    - agent_pool: Dict[int, PCAgent] — one PC network per agent
-    - shared_world: GridWorld — all agents coexist
-    - step_all(): advance all agents, compute cross prediction errors
-    - communication_matrix: NxN array of prediction errors
-    """
-
-    def __init__(self, n_agents: int = 5, world_size: int = 30):
+    def __init__(self, size: int, n_agents: int):
+        self.size = size
         self.n_agents = n_agents
-        self.world_size = world_size
-        self.agents: Dict[int, Any] = {}
-        self.log_path = Path(__file__).resolve().parent.parent / "logs" / "emergence.jsonl"
+        self.grid: np.ndarray = np.zeros((size, size), dtype=np.int32)
+        self.agent_positions: List[Tuple[int, int]] = []
+        self.goal_positions: List[Tuple[int, int]] = []
+        self.agent_errors: List[float] = [0.0] * n_agents
 
-    def setup(self):
-        """Initialize agents and shared environment."""
-        raise NotImplementedError("Phase 2: implement multi-agent setup")
+    def reset(self):
+        self.grid.fill(EMPTY)
+        self.agent_positions = []
+        self.goal_positions = []
+        self.agent_errors = [0.0] * self.n_agents
 
-    def step(self):
-        """Advance one timestep for all agents."""
-        raise NotImplementedError("Phase 2: implement multi-agent step")
+        occupied = set()
+        for i in range(self.n_agents):
+            pos = self._random_free(occupied)
+            self.agent_positions.append(pos)
+            self.grid[pos] = AGENT + 10 + i  # unique agent id on grid
+            occupied.add(pos)
 
-    def run(self, n_steps: int = 500):
-        """Run emergence experiment."""
-        raise NotImplementedError("Phase 2: implement emergence loop")
+        for i in range(self.n_agents):
+            goal = self._random_free(occupied | set(self.agent_positions))
+            self.goal_positions.append(goal)
+            self.grid[goal] = GOAL
+            occupied.add(goal)
 
-    def log(self, data: Dict):
-        """Append JSONL log entry."""
-        import json
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.log_path, "a") as f:
-            f.write(json.dumps(data) + "\n")
+    def _random_free(self, occupied: set) -> Tuple[int, int]:
+        while True:
+            x = random.randint(0, self.size - 1)
+            y = random.randint(0, self.size - 1)
+            if (x, y) not in occupied and self.grid[y, x] == EMPTY:
+                return (x, y)
+
+    def observe_grid(self, agent_id: int) -> np.ndarray:
+        """Return 3x3 local window with agents normalised to 1."""
+        x, y = self.agent_positions[agent_id]
+        half = WINDOW_SIZE // 2
+        obs = np.zeros((WINDOW_SIZE, WINDOW_SIZE), dtype=np.float32)
+        for dy in range(-half, half + 1):
+            for dx in range(-half, half + 1):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < self.size and 0 <= ny < self.size:
+                    val = self.grid[ny, nx]
+                    if val >= AGENT + 10:
+                        val = AGENT
+                    obs[dy + half, dx + half] = float(val)
+        return obs.flatten()
+
+    def observe_social(self, agent_id: int) -> np.ndarray:
+        """Return normalised prediction errors of all agents."""
+        arr = np.array(self.agent_errors, dtype=np.float32)
+        mx = max(arr) if np.max(arr) > 1e-8 else 1.0
+        return arr / mx
+
+    def observe(self, agent_id: int) -> np.ndarray:
+        grid_part = self.observe_grid(agent_id)
+        social_part = self.observe_social(agent_id)
+        return np.concatenate([grid_part, social_part])
+
+    def step(self, agent_id: int, action: int, error: float) -> Tuple[float, bool]:
+        dx, dy = [(0, -1), (0, 1), (-1, 0), (1, 0)][action]
+        x, y = self.agent_positions[agent_id]
+        nx, ny = x + dx, y + dy
+
+        self.agent_errors[agent_id] = error
+
+        if not (0 <= nx < self.size and 0 <= ny < self.size):
+            return -0.1, False
+
+        if self.grid[ny, nx] == WALL:
+            return -0.1, False
+
+        # collision: another agent is at destination
+        for other_id, pos in enumerate(self.agent_positions):
+            if other_id != agent_id and pos == (nx, ny):
+                return -0.5, False
+
+        # free to move
+        self.grid[y, x] = EMPTY
+        self.agent_positions[agent_id] = (nx, ny)
+        self.grid[ny, nx] = AGENT + 10 + agent_id
+
+        reward = -0.1
+        done = False
+        if (nx, ny) == self.goal_positions[agent_id]:
+            reward = 10.0
+            self.grid[self.goal_positions[agent_id]] = EMPTY
+            self.goal_positions[agent_id] = self._random_free(
+                set(self.agent_positions) | set(self.goal_positions)
+            )
+            self.grid[self.goal_positions[agent_id]] = GOAL
+            done = True
+
+        return reward, done
+
+
+def compute_pairwise_metrics(
+    agents: List[PCAgent],
+    world: MultiAgentWorld,
+) -> Dict:
+    """Compute pairwise coordination metrics."""
+    n = len(agents)
+    distances = np.zeros((n, n), dtype=np.float32)
+    error_corr = 0.0
+    n_pairs = 0
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            pi = np.array(world.agent_positions[i])
+            pj = np.array(world.agent_positions[j])
+            d = float(np.linalg.norm(pi - pj))
+            distances[i, j] = d
+            distances[j, i] = d
+
+            ei = agents[i].error_history[-1] if agents[i].error_history else 0.0
+            ej = agents[j].error_history[-1] if agents[j].error_history else 0.0
+            error_corr += abs(ei - ej)
+            n_pairs += 1
+
+    avg_distance = float(np.mean(distances[distances > 0])) if np.any(distances > 0) else 0.0
+    min_distance = float(np.min(distances[distances > 0])) if np.any(distances > 0) else 0.0
+    avg_error_divergence = error_corr / max(n_pairs, 1)
+
+    collision_count = sum(
+        1 for i in range(n) for j in range(i + 1, n)
+        if distances[i, j] < 1.5
+    )
+
+    return {
+        "avg_pairwise_distance": round(avg_distance, 4),
+        "min_pairwise_distance": round(min_distance, 4),
+        "close_proximity_events": collision_count,
+        "avg_error_divergence": round(avg_error_divergence, 4),
+    }
+
+
+def run_multi_agent_episode(
+    episode: int,
+    agents: List[PCAgent],
+    world: MultiAgentWorld,
+    shared_mem: SharedMemory,
+    step_logs: List,
+    pairwise_log: object,
+    event_log_file,
+) -> Dict:
+    world.reset()
+    for agent in agents:
+        agent.reset_episodic()
+
+    step = 0
+
+    # store initial observations
+    prev_obs = [world.observe(i) for i in range(N_AGENTS)]
+    total_rewards = [0.0] * N_AGENTS
+    goals_reached = [0] * N_AGENTS
+    agent_step_errors: List[List[float]] = [[] for _ in range(N_AGENTS)]
+    agent_step_rewards: List[List[float]] = [[] for _ in range(N_AGENTS)]
+    shared_retrievals = [0] * N_AGENTS
+    cross_agent_hits = [0] * N_AGENTS
+
+    # initial memory stores and curiosities
+    for i in range(N_AGENTS):
+        agents[i].memory.store(prev_obs[i], {"pos": world.agent_positions[i]})
+        agents[i].pos_memory.visit(world.agent_positions[i])
+        shared_mem.store(prev_obs[i], agent_id=i, meta={"pos": world.agent_positions[i]})
+
+    print(f"\n{'='*60}")
+    print(f"  Episode {episode + 1}/{N_EPISODES}  ({N_AGENTS} agents, shared memory)")
+    print(f"{'='*60}")
+
+    for step in range(N_STEPS):
+        # 1. each agent picks action
+        actions = []
+        for i in range(N_AGENTS):
+            agent = agents[i]
+            ax, ay = world.agent_positions[i]
+            gx, gy = world.goal_positions[i]
+            dx, dy = gx - ax, gy - ay
+
+            if abs(dx) > abs(dy):
+                action = 2 if dx > 0 else 3
+            else:
+                action = 1 if dy > 0 else 0
+
+            if random.random() < EXPLORE_RATE:
+                action = random.randint(0, 3)
+
+            # check if another agent is in the cell we want to move to — if so, explore instead
+            nx, ny = world.agent_positions[i]
+            ndx, ndy = [(0, -1), (0, 1), (-1, 0), (1, 0)][action]
+            tx, ty = nx + ndx, ny + ndy
+            for other_id, pos in enumerate(world.agent_positions):
+                if other_id != i and pos == (tx, ty):
+                    action = random.randint(0, 3)
+                    break
+
+            actions.append(action)
+
+        # 2. each agent observes, predicts, stores
+        curr_obs = [world.observe(i) for i in range(N_AGENTS)]
+        for i in range(N_AGENTS):
+            prediction_error = agents[i].train_step(prev_obs[i], curr_obs[i])
+            agent_step_errors[i].append(prediction_error)
+
+            # step world with error signal
+            reward, done = world.step(i, actions[i], prediction_error)
+            if reward == 10.0:
+                goals_reached[i] += 1
+            curiosity = agents[i].pos_memory.visit(world.agent_positions[i])
+            total_reward = reward + curiosity
+            total_rewards[i] += total_reward
+            agent_step_rewards[i].append(total_reward)
+
+            wm_update = agents[i].world_model.update(
+                curr_obs[i], prediction_error, actions[i], world.agent_positions[i]
+            )
+            agents[i].world_model_log.append(wm_update)
+
+            agents[i].behavior.record(actions[i], world.agent_positions[i])
+            old_pos = world.agent_positions[i]
+            agents[i].behavior.record_transition(old_pos, world.agent_positions[i])
+            agents[i].behavior.extract_motifs()
+
+            retrieval_count = agents[i].memory.retrieval_count
+            agents[i].memory.store(curr_obs[i], {
+                "pos": world.agent_positions[i],
+                "memory_retrievals": retrieval_count,
+                "reward": total_reward,
+                "error": prediction_error,
+            })
+
+            # shared memory: query before storing
+            shared_results = shared_mem.retrieve(
+                curr_obs[i], top_k=3, similarity_threshold=0.6
+            )
+            shared_retrievals[i] += len(shared_results)
+            for r in shared_results:
+                if r["agent_id"] != i:
+                    cross_agent_hits[i] += 1
+            shared_mem.store(
+                curr_obs[i],
+                value=None,
+                agent_id=i,
+                meta={
+                    "pos": world.agent_positions[i],
+                    "error": prediction_error,
+                    "reward": total_reward,
+                    "action": actions[i],
+                },
+            )
+
+            entry = {
+                "episode": episode,
+                "timestep": step,
+                "agent_id": i,
+                "prediction_error": round(prediction_error, 6),
+                "memory_retrieval_count": retrieval_count,
+                "shared_retrievals": len(shared_results),
+                "reward": round(total_reward, 4),
+                "goal_reward": reward if reward == 10.0 else 0.0,
+                "curiosity_reward": round(curiosity, 4),
+                "position": list(world.agent_positions[i]),
+                "action": actions[i],
+                "total_reward": round(total_rewards[i], 2),
+                "wm_latent_norm": round(wm_update.get("latent_norm", 0.0), 4),
+            }
+            step_logs[i].write(json.dumps(entry) + "\n")
+
+            # check for emergence events
+            events = agents[i].behavior.check_emergence_event(episode, step)
+            if events:
+                for ev in events:
+                    ev["agent_id"] = i
+                    event_log_file.write(json.dumps(ev) + "\n")
+                    print(f"  ★ Agent {i}: {ev['event_type']} (score={ev['novelty_score']})")
+
+        prev_obs = curr_obs
+
+        # log pairwise metrics
+        if step % 25 == 0:
+            pairwise = compute_pairwise_metrics(agents, world)
+            pairwise["episode"] = episode
+            pairwise["timestep"] = step
+            pairwise["shared_mem_size"] = len(shared_mem.keys)
+            shared_stats = shared_mem.stats()
+            pairwise["shared_mem_total_writes"] = shared_stats["total_writes"]
+            pairwise["shared_mem_total_reads"] = shared_stats["total_reads"]
+            pairwise_log.write(json.dumps(pairwise) + "\n")
+
+    # episode summary
+    print(f"\n  Episode {episode + 1} summary:")
+    all_metrics = []
+    for i in range(N_AGENTS):
+        metrics = compute_episode_metrics(
+            agents[i], agent_step_errors[i], agent_step_rewards[i], goals_reached[i],
+            grid_cells=GRID_SIZE * GRID_SIZE,
+        )
+        metrics["episode"] = episode
+        metrics["agent_id"] = i
+        metrics["shared_retrievals"] = shared_retrievals[i]
+        metrics["cross_agent_hits"] = cross_agent_hits[i]
+        all_metrics.append(metrics)
+        print(f"  Agent {i}: avg_err={metrics['avg_prediction_error']:.4f} "
+              f"unique={metrics['unique_states_explored']} "
+              f"reward={metrics['total_reward']:.1f} "
+              f"goals={goals_reached[i]} "
+              f"shared_reads={shared_retrievals[i]} "
+              f"cross_hits={cross_agent_hits[i]}")
+
+    pairwise = compute_pairwise_metrics(agents, world)
+    pairwise["episode"] = episode
+    pairwise["timestep"] = -1
+    pairwise["shared_mem_size"] = len(shared_mem.keys)
+    shared_stats = shared_mem.stats()
+    pairwise["shared_mem_total_writes"] = shared_stats["total_writes"]
+    pairwise["shared_mem_total_reads"] = shared_stats["total_reads"]
+    pairwise_log.write(json.dumps(pairwise) + "\n")
+
+    return all_metrics
+
+
+def main():
+    print(f"FabricEmergenceLab — Emergence Lab (Phase 2: Multi-Agent)")
+    print(f"{'='*60}")
+    print(f"  Grid:        {GRID_SIZE}x{GRID_SIZE}")
+    print(f"  Agents:      {N_AGENTS}")
+    print(f"  Episodes:    {N_EPISODES}")
+    print(f"  Steps/ep:    {N_STEPS}")
+    print(f"  Total steps: {N_EPISODES * N_STEPS}")
+    print(f"  Obs dim:     {TOTAL_OBS_DIM} (grid {OBS_DIM} + social {SOCIAL_OBS_DIM})")
+    print(f"  Explore:     {EXPLORE_RATE*100:.0f}%")
+    print(f"{'='*60}")
+
+    rng_key = jax.random.PRNGKey(42)
+    agent_keys = jax.random.split(rng_key, N_AGENTS + 1)
+    agents = [
+        PCAgent(agent_id=i, rng_key=agent_keys[i], obs_dim=TOTAL_OBS_DIM, hidden_dim=16)
+        for i in range(N_AGENTS)
+    ]
+
+    world = MultiAgentWorld(size=GRID_SIZE, n_agents=N_AGENTS)
+    shared_mem = SharedMemory(capacity=5000)
+
+    step_logs = []
+    for i in range(N_AGENTS):
+        path = LOG_DIR / f"emergence_agent_{i}.jsonl"
+        step_logs.append(open(path, "w"))
+
+    pairwise_path = LOG_DIR / "emergence_pairwise.jsonl"
+    pairwise_log = open(pairwise_path, "w")
+
+    event_path = LOG_DIR / "emergence_events.jsonl"
+    event_log = open(event_path, "w")
+
+    all_episode_metrics = []
+
+    try:
+        for ep in range(N_EPISODES):
+            ep_metrics = run_multi_agent_episode(ep, agents, world, shared_mem, step_logs, pairwise_log, event_log)
+            all_episode_metrics.extend(ep_metrics)
+
+            # write per-episode metric summary
+            metric_path = LOG_DIR / "emergence_metrics.jsonl"
+            with open(metric_path, "a") as mf:
+                for m in ep_metrics:
+                    mf.write(json.dumps(m) + "\n")
+    finally:
+        for f in step_logs:
+            f.close()
+        pairwise_log.close()
+        event_log.close()
+
+    # final summary
+    print(f"\n{'='*60}")
+    print(f"  EXPERIMENT COMPLETE")
+    print(f"{'='*60}")
+    if all_episode_metrics:
+        avg_errors = [m["avg_prediction_error"] for m in all_episode_metrics]
+        avg_novelty = np.mean([m["novelty_score"] for m in all_episode_metrics])
+        total_retrievals = sum(m["memory_retrieval_count"] for m in all_episode_metrics)
+        total_goals = sum(m["goals_reached"] for m in all_episode_metrics)
+        print(f"  Avg prediction error:     {np.mean(avg_errors):.4f}")
+        print(f"  Avg novelty score:        {avg_novelty:.4f}")
+        print(f"  Total memory retrievals:  {total_retrievals}")
+        print(f"  Total goals reached:      {total_goals}")
+    for i in range(N_AGENTS):
+        print(f"  Agent {i} log:  logs/emergence_agent_{i}.jsonl")
+    print(f"  Pairwise log:  logs/emergence_pairwise.jsonl")
+    print(f"  Events:        logs/emergence_events.jsonl")
+    print(f"  Metrics:       logs/emergence_metrics.jsonl")
+    print(f"{'='*60}")
 
 
 if __name__ == "__main__":
-    print("Emergence Lab — placeholder for Phase 2+ experiments.")
-    print("Run `python experiments/memory_maze.py` for the working demo.")
+    main()
