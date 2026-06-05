@@ -13,20 +13,26 @@ FabricEmergenceLab/
 │   └── jax_setup.py             # JAX flag initialization
 ├── experiments/                 # Emergence experiments
 │   ├── memory_maze.py           # Phase 1: single-agent gridworld
-│   ├── emergence_lab.py         # Phase 2: multi-agent (TODO)
-│   ├── multi_agent_world.py     # Phase 3: shared memory (TODO)
-│   └── evolution_loop.py        # Phase 4: evolutionary optimization
+│   ├── emergence_lab.py         # Phases 2+3+5: multi-agent + shared memory + comms
+│   ├── multi_agent_world.py     # Legacy stub (superseded by emergence_lab.py)
+│   └── evolution_loop.py        # Phase 6: evolutionary optimization
 ├── docs/                        # Project documentation
 │   ├── roadmap.md               # Phase milestones
 │   ├── architecture.md          # This file
-│   └── emergence_report.md      # Generated analysis report
+│   ├── emergence_report.md      # Generated analysis report
+│   └── phase_8_vision.md        # Phase 8: SimWorld vision document
 ├── logs/                        # Experiment output (JSONL)
-│   ├── memory_maze.jsonl        # Per-step log
+│   ├── memory_maze.jsonl        # Phase 1 per-step log
+│   ├── emergence_agent_*.jsonl  # Phases 2-5 per-agent step data
 │   ├── emergence_metrics.jsonl  # Per-episode aggregate metrics
 │   ├── emergence_events.jsonl   # Detected emergence events
+│   ├── emergence_pairwise.jsonl # Inter-agent pairwise metrics
+│   ├── evolution_log.jsonl      # Phase 6 per-generation data
 │   └── analysis.py              # Log analysis tool
 ├── scripts/
-│   └── generate_report.py       # Emergence report generator
+│   ├── generate_emergence_report.py  # Full emergence report generator
+│   ├── generate_report.py            # Legacy report wrapper
+│   └── llm_interpret.py              # Phase 7: LLM-assisted analysis
 ├── notebooks/                   # Jupyter notebooks (analysis)
 ├── CONTRIBUTING.md
 ├── CODE_OF_CONDUCT.md
