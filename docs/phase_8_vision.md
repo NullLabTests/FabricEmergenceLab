@@ -2,6 +2,10 @@
 
 *A vision for the final integrated platform*
 
+**Phase 8.1 (complete):** A lightweight 2D physics environment built on Pymunk. Agents with position, velocity, and force actuators navigate a continuous space with gravity, friction, collision, and manipulable objects. This serves as the on-ramp to SimWorld — same adapter interface, same embodied predictive-coding principles, runs on CPU.
+
+**Phase 8.2+:** The full SimWorld UE5 integration — photorealistic 3D environments, humanoid agents, visual prediction, and active inference at scale.
+
 ---
 
 ## From Discrete Grids to Continuous Worlds
@@ -76,16 +80,16 @@ In continuous physics environments, these processes play out in real time. An ag
 
 ## Timeline and Milestones
 
-| Milestone | Description | Target |
-|-----------|-------------|--------|
-| **8.1** | SimWorld adapter implemented — continuous GridWorld (position only) | Q3 2025 |
-| **8.2** | PC agent with proprioception — joint angles + contact arrays | Q4 2025 |
-| **8.3** | Visual prediction — 64×64 RGB frame prediction with FabricPC | Q1 2026 |
-| **8.4** | Tool use benchmark — single-agent block pushing | Q2 2026 |
-| **8.5** | Multi-agent coordination in physics scenes | Q3 2026 |
-| **8.6** | Emergent gestural communication in continuous space | Q4 2026 |
-| **8.7** | LLM overseer integration — real-time behavior narration | Q1 2027 |
-| **8.8** | Full active inference loop — integrated perception, action, learning | Q2 2027 |
+| Milestone | Description | Target | Status |
+|-----------|-------------|--------|--------|
+| **8.1** | Pymunk-based continuous 2D physics world with agents, objects, gravity, collision | Q2 2025 | ✅ Complete |
+| **8.2** | SimWorld adapter — continuous state with proprioception (joint angles, contacts) | Q3 2025 | 🔲 |
+| **8.3** | Visual prediction — 64×64 RGB frame prediction with FabricPC | Q1 2026 | 🔲 |
+| **8.4** | Tool use benchmark — single-agent block pushing | Q2 2026 | 🔲 |
+| **8.5** | Multi-agent coordination in physics scenes | Q3 2026 | 🔲 |
+| **8.6** | Emergent gestural communication in continuous space | Q4 2026 | 🔲 |
+| **8.7** | LLM overseer integration — real-time behavior narration | Q1 2027 | 🔲 |
+| **8.8** | Full active inference loop + SimWorld integration | Q2 2027 | 🔲 |
 
 ---
 

@@ -56,7 +56,8 @@ Think of it as a **behavioral microscope** for artificial neural systems. Each a
 | 5 | Emergent communication protocols | ✅ |
 | 6 | Evolutionary graph mutation | ✅ |
 | 7 | LLM-assisted behavior interpretation | ✅ |
-| 8 | SimWorld physics integration | 🔬 |
+| 8.1 | Continuous 2D physics (Pymunk, CPU) | ✅ |
+| 8.2+ | SimWorld UE5 integration (GPU) | 🔬 |
 
 ---
 

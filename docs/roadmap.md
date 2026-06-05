@@ -79,6 +79,27 @@
 - Fallback analysis when no API key available
 - Interprets: behavioral patterns, emergence, learning dynamics, WorldModel trends
 
+## Phase 8: SimWorld Integration
+**Status: 8.1 ✅ / 8.2+ 🔬**
+
+### 8.1 — Continuous 2D Physics World ✅
+- `PhysicsEnvironment` — Pymunk-based 2D physics with gravity, friction, collision
+- Agents with continuous position/velocity/force state (8-dim proprioception)
+- Manipulable objects with variable mass and physics properties
+- Goals with proximity-triggered collection and respawn
+- `PhysicsAdapter` wrapping in the `EnvironmentAdapter` interface
+- `experiments/physics_emergence.py` — PC agents learning in continuous physics space
+- Continuous state-space prediction with FabricPC
+- Curiosity-driven exploration in 2D continuous coordinates
+- JSONL logging of continuous position, velocity, force, and prediction error
+
+### 8.2+ — Full SimWorld Integration 🔬
+- UE5 backend for photorealistic 3D environments (requires GPU)
+- Humanoid agents with joint-angle proprioception
+- Visual prediction (RGB, depth, segmentation) with FabricPC
+- Active inference loop — perception, action, and learning unified
+- See `docs/phase_8_vision.md` for the complete roadmap
+
 ---
 
 ## Milestone Timeline
@@ -90,8 +111,9 @@ Phase 3 ────────────────────────
 Phase 4 ──────────────────────────────────────── ●
 Phase 5 ──────────────────────────────────────── ●
 Phase 6 ──────────────────────────────────────── ●
-Phase 7 ──────────────────────────────────────── ● (current)
-Phase 8 ──────────────────────────────────────── ◇ (vision)
+Phase 7 ──────────────────────────────────────── ●
+Phase 8.1 ────────────────────────────────────── ● (current)
+Phase 8.2+ ───────────────────────────────────── ◇ (vision)
 ```
 
 ## Engineering Principles

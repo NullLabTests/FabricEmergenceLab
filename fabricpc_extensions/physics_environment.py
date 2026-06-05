@@ -303,8 +303,8 @@ class PhysicsEnvironment:
         return "\n".join(lines)
 
     def observation_space(self) -> int:
-        """Return total observation dimension."""
-        return self._get_observation().shape[0]
+        """Return total observation dimension (computed from config, no reset needed)."""
+        return self.n_agents * 8 + self.n_objects * 4 + self.n_goals * 2
 
     def action_space(self) -> Tuple[int, int]:
         """Return (n_agents, action_dim). Each action is 2D force."""
