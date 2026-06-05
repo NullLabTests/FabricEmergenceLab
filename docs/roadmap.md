@@ -7,11 +7,18 @@
 - One agent with a FabricPC predictive-coding network
 - 3×3 local observation window
 - Associative memory (key-value store with cosine similarity retrieval)
+- Positional memory dict (visit counts per cell)
+- Curiosity reward (+ for first visits, − for revisits)
 - Online learning: agent predicts next observation, minimizes prediction error
-- JSONL logging of timestep, prediction error, memory retrievals, reward, position
+- Episode support (100 episodes × 200 steps)
+- JSONL logging of per-step and per-episode data
+- Emergence metrics: error variance, novelty, entropy, transitions
+- Behavior detection: motifs, loops, navigation patterns
+- Emergence event logging
+- Analysis tools: `logs/analysis.py`, `scripts/generate_report.py`
 - Run with: `python experiments/memory_maze.py`
 
-## Phase 2: Multiple Interacting Agents
+## Phase 2: Multi-Agent Environment
 **Status: 🔲 Planned**
 
 - Spawn N agents in a shared world
@@ -31,7 +38,15 @@
 - Study whether shared memory accelerates individual learning
 - Memory consolidation and forgetting mechanisms
 
-## Phase 4: Evolutionary Graph Mutation
+## Phase 4: Emergent Communication Protocols
+**Status: 🔲 Planned**
+
+- Agents develop communication signals through interaction
+- Measure mutual information between agents' internal states
+- Detect emergent codebooks or signaling conventions
+- Study how communication affects collective task performance
+
+## Phase 5: Evolutionary Graph Mutation
 **Status: 🔲 Planned**
 
 - Population of PC graph topologies (node types, edge sets, hyperparameters)
@@ -41,25 +56,15 @@
 - Tournament selection, elitism
 - Track best genome across generations
 
-## Phase 5: Persistent World Model
-**Status: 🔲 Planned**
-
-- Maintain a world model that persists across agent lifetimes
-- Agents can query the world model for "what would happen if I...?"
-- Model-based planning using the PC network's predictive capability
-- Separate "world model" network from "policy" network
-- Imagined rollouts for counterfactual reasoning
-
-## Phase 6: LLM-Assisted Symbolic Reasoning
+## Phase 6: LLM-Assisted Interpretation
 **Status: 🔲 Planned**
 
 - Optional integration with LLM APIs for high-level reasoning
-- LLM receives environment summary + agent prediction errors
-- LLM outputs symbolic goals or subgoal decomposition
+- LLM receives environment summary + agent prediction errors + emergence events
+- LLM outputs natural-language interpretations of detected behaviors
 - Hybrid architecture: PC network for low-level perception/prediction,
-  LLM for symbolic planning
-- Prompt templates and cost-aware scheduling
-- Evaluation: does LLM guidance improve sample efficiency?
+  LLM for behavioral analysis
+- Evaluation: does LLM interpretation match logged metrics?
 
 ---
 
@@ -74,6 +79,9 @@ Phase 5 ────────────────────────
 Phase 6 ────────────────────────────────────────── ○
 ```
 
-Each phase builds on the previous. Phases 2–6 have TODO interfaces in
-the `experiments/` directory with detailed docstrings describing the
-required implementation.
+## Engineering Principles
+
+1. **Measurable over speculative** — every claim of emergence requires logged evidence
+2. **Reproducible** — fixed seeds, full logging, deterministic analysis
+3. **Incremental** — each phase builds on working infrastructure
+4. **Transparent** — all metrics are computed from raw step data

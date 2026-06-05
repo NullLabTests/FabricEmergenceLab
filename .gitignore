@@ -16,9 +16,9 @@ venv/
 .mypy_cache/
 .pytest_cache/
 .DS_Store
-logs/
+logs/__pycache__/
+logs/*.log
 *.log
-*.jsonl
 data/
 checkpoints/
 .aim/

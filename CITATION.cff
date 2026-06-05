@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software in research, please cite it as below."
+authors:
+  - name: "NullLabTests"
+    email: "null@example.com"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+title: "FabricEmergenceLab: Predictive Coding Emergence Observatory"
+version: "0.1.0"
+date-released: 2025
+url: "https://github.com/NullLabTests/FabricEmergenceLab"
+license: "MIT"
+repository-code: "https://github.com/NullLabTests/FabricEmergenceLab"
+abstract: >
+  FabricEmergenceLab transforms the JAX-based FabricPC predictive coding library into an
+  Emergence Observatory: a platform for detecting, measuring, and documenting emergent
+  behaviors in autonomous predictive-coding agents. It provides a single-agent GridWorld
+  experiment with associative memory, positional memory, behavior tracking, curiosity-driven
+  exploration, and a latent world model.
+keywords:
+  - predictive coding
+  - emergence
+  - autonomous agents
+  - JAX
+  - machine learning
+  - cognitive science
