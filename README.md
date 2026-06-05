@@ -209,14 +209,14 @@ FabricEmergenceLab/
 
 | Phase | Experiment | Status |
 |-------|-----------|--------|
-| 1 | Single predictive-coding agent | ✅ Complete |
-| 2 | Multi-agent environment | 🔲 Planned |
-| 3 | Shared associative memory | 🔲 Planned |
-| 4 | WorldModel transition learning | 🔲 Planned |
-| 5 | Emergent communication protocols | 🔲 Planned |
-| 6 | Evolutionary graph mutation | 🔲 Planned |
-| 7 | LLM-assisted interpretation | 🔲 Planned |
-| 8 | SimWorld integration | 🔬 Research |
+| 1 | Single predictive-coding agent | ✅ |
+| 2 | Multi-agent environment | ✅ |
+| 3 | Shared associative memory | ✅ |
+| 4 | WorldModel transition learning | ✅ |
+| 5 | Emergent communication protocols | ✅ |
+| 6 | Evolutionary graph mutation | 🔲 |
+| 7 | LLM-assisted interpretation | 🔲 |
+| 8 | SimWorld integration | 🔬 |
 
 See [docs/roadmap.md](docs/roadmap.md) for details.
 

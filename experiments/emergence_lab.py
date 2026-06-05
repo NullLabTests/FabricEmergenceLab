@@ -45,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fabricpc_extensions.agent import PCAgent, compute_episode_metrics
 from fabricpc_extensions.shared_memory import SharedMemory
+from fabricpc_extensions.communication import CommunicationChannel
 
 N_AGENTS = int(os.environ.get("N_AGENTS", "4"))
 GRID_SIZE = int(os.environ.get("GRID_SIZE", "24"))
@@ -53,8 +54,10 @@ OBS_DIM = WINDOW_SIZE * WINDOW_SIZE
 N_EPISODES = int(os.environ.get("N_EPISODES", "3"))
 N_STEPS = 200
 EXPLORE_RATE = 0.2
+MSG_DIM = 4
 SOCIAL_OBS_DIM = N_AGENTS  # one error signal per agent (including self)
-TOTAL_OBS_DIM = OBS_DIM + SOCIAL_OBS_DIM
+COMMS_OBS_DIM = (N_AGENTS - 1) * MSG_DIM  # messages from other agents
+TOTAL_OBS_DIM = OBS_DIM + SOCIAL_OBS_DIM + COMMS_OBS_DIM
 
 EMPTY = 0
 AGENT = 1
@@ -123,10 +126,14 @@ class MultiAgentWorld:
         mx = max(arr) if np.max(arr) > 1e-8 else 1.0
         return arr / mx
 
-    def observe(self, agent_id: int) -> np.ndarray:
+    def observe(self, agent_id: int, comms_channel: Optional["CommunicationChannel"] = None) -> np.ndarray:
         grid_part = self.observe_grid(agent_id)
         social_part = self.observe_social(agent_id)
-        return np.concatenate([grid_part, social_part])
+        if comms_channel is not None:
+            comms_part = comms_channel.receive(agent_id)
+        else:
+            comms_part = np.zeros(0, dtype=np.float32)
+        return np.concatenate([grid_part, social_part, comms_part])
 
     def step(self, agent_id: int, action: int, error: float) -> Tuple[float, bool]:
         dx, dy = [(0, -1), (0, 1), (-1, 0), (1, 0)][action]
@@ -210,24 +217,27 @@ def run_multi_agent_episode(
     agents: List[PCAgent],
     world: MultiAgentWorld,
     shared_mem: SharedMemory,
+    comms_channel: CommunicationChannel,
     step_logs: List,
     pairwise_log: object,
     event_log_file,
 ) -> Dict:
     world.reset()
+    comms_channel.reset()
     for agent in agents:
         agent.reset_episodic()
 
     step = 0
 
-    # store initial observations
-    prev_obs = [world.observe(i) for i in range(N_AGENTS)]
     total_rewards = [0.0] * N_AGENTS
     goals_reached = [0] * N_AGENTS
     agent_step_errors: List[List[float]] = [[] for _ in range(N_AGENTS)]
     agent_step_rewards: List[List[float]] = [[] for _ in range(N_AGENTS)]
     shared_retrievals = [0] * N_AGENTS
     cross_agent_hits = [0] * N_AGENTS
+
+    # initial observations with comms channel (no messages yet)
+    prev_obs = [world.observe(i, comms_channel) for i in range(N_AGENTS)]
 
     # initial memory stores and curiosities
     for i in range(N_AGENTS):
@@ -236,7 +246,7 @@ def run_multi_agent_episode(
         shared_mem.store(prev_obs[i], agent_id=i, meta={"pos": world.agent_positions[i]})
 
     print(f"\n{'='*60}")
-    print(f"  Episode {episode + 1}/{N_EPISODES}  ({N_AGENTS} agents, shared memory)")
+    print(f"  Episode {episode + 1}/{N_EPISODES}  ({N_AGENTS} agents, comms channel)")
     print(f"{'='*60}")
 
     for step in range(N_STEPS):
@@ -267,8 +277,20 @@ def run_multi_agent_episode(
 
             actions.append(action)
 
-        # 2. each agent observes, predicts, stores
-        curr_obs = [world.observe(i) for i in range(N_AGENTS)]
+        # 2. each agent produces a message from its internal state
+        for i in range(N_AGENTS):
+            wm_state = agents[i].world_model.get_state()
+            latent = wm_state.get("mean", np.zeros(16, dtype=np.float32))
+            if latent is None:
+                latent = np.zeros(16, dtype=np.float32)
+            msg = comms_channel.produce(
+                latent, agents[i].error_history[-1] if agents[i].error_history else 0.0,
+                world.agent_positions[i],
+            )
+            comms_channel.broadcast(i, msg)
+
+        # 3. each agent observes (now with communication messages), predicts, stores
+        curr_obs = [world.observe(i, comms_channel) for i in range(N_AGENTS)]
         for i in range(N_AGENTS):
             prediction_error = agents[i].train_step(prev_obs[i], curr_obs[i])
             agent_step_errors[i].append(prediction_error)
@@ -347,8 +369,9 @@ def run_multi_agent_episode(
                     print(f"  ★ Agent {i}: {ev['event_type']} (score={ev['novelty_score']})")
 
         prev_obs = curr_obs
+        comms_channel.next_step()
 
-        # log pairwise metrics
+        # log pairwise metrics + comms stats
         if step % 25 == 0:
             pairwise = compute_pairwise_metrics(agents, world)
             pairwise["episode"] = episode
@@ -357,6 +380,10 @@ def run_multi_agent_episode(
             shared_stats = shared_mem.stats()
             pairwise["shared_mem_total_writes"] = shared_stats["total_writes"]
             pairwise["shared_mem_total_reads"] = shared_stats["total_reads"]
+            comms_stats = comms_channel.stats()
+            pairwise["avg_mutual_information"] = comms_stats["avg_mutual_information"]
+            pairwise["communication_entropy"] = comms_stats["communication_entropy"]
+            pairwise["protocol_coherence"] = comms_stats["protocol_coherence"]
             pairwise_log.write(json.dumps(pairwise) + "\n")
 
     # episode summary
@@ -372,6 +399,7 @@ def run_multi_agent_episode(
         metrics["shared_retrievals"] = shared_retrievals[i]
         metrics["cross_agent_hits"] = cross_agent_hits[i]
         all_metrics.append(metrics)
+        comms_stats = comms_channel.stats()
         print(f"  Agent {i}: avg_err={metrics['avg_prediction_error']:.4f} "
               f"unique={metrics['unique_states_explored']} "
               f"reward={metrics['total_reward']:.1f} "
@@ -386,6 +414,10 @@ def run_multi_agent_episode(
     shared_stats = shared_mem.stats()
     pairwise["shared_mem_total_writes"] = shared_stats["total_writes"]
     pairwise["shared_mem_total_reads"] = shared_stats["total_reads"]
+    comms_stats = comms_channel.stats()
+    pairwise["avg_mutual_information"] = comms_stats["avg_mutual_information"]
+    pairwise["communication_entropy"] = comms_stats["communication_entropy"]
+    pairwise["protocol_coherence"] = comms_stats["protocol_coherence"]
     pairwise_log.write(json.dumps(pairwise) + "\n")
 
     return all_metrics
@@ -399,7 +431,7 @@ def main():
     print(f"  Episodes:    {N_EPISODES}")
     print(f"  Steps/ep:    {N_STEPS}")
     print(f"  Total steps: {N_EPISODES * N_STEPS}")
-    print(f"  Obs dim:     {TOTAL_OBS_DIM} (grid {OBS_DIM} + social {SOCIAL_OBS_DIM})")
+    print(f"  Obs dim:     {TOTAL_OBS_DIM} (grid {OBS_DIM} + social {SOCIAL_OBS_DIM} + comms {COMMS_OBS_DIM})")
     print(f"  Explore:     {EXPLORE_RATE*100:.0f}%")
     print(f"{'='*60}")
 
@@ -412,6 +444,7 @@ def main():
 
     world = MultiAgentWorld(size=GRID_SIZE, n_agents=N_AGENTS)
     shared_mem = SharedMemory(capacity=5000)
+    comms_channel = CommunicationChannel(n_agents=N_AGENTS, msg_dim=MSG_DIM)
 
     step_logs = []
     for i in range(N_AGENTS):
@@ -428,7 +461,7 @@ def main():
 
     try:
         for ep in range(N_EPISODES):
-            ep_metrics = run_multi_agent_episode(ep, agents, world, shared_mem, step_logs, pairwise_log, event_log)
+            ep_metrics = run_multi_agent_episode(ep, agents, world, shared_mem, comms_channel, step_logs, pairwise_log, event_log)
             all_episode_metrics.extend(ep_metrics)
 
             # write per-episode metric summary

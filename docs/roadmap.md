@@ -19,34 +19,45 @@
 - Run with: `python experiments/memory_maze.py`
 
 ## Phase 2: Multi-Agent Environment
-**Status: 🔲 Planned**
+**Status: ✅ Complete**
 
-- Spawn N agents in a shared world
+- N agents in a shared GridWorld, each with own goal
 - Each agent runs its own FabricPC network independently
-- Agents can observe each other's positions and prediction errors
-- Inter-agent prediction error as a communication/salience signal
+- Agents observe 3x3 local windows (including other agents)
+- Social observation vector: all agents' prediction errors
 - Collision detection and avoidance
-- Log pairwise metrics to study emergent coordination
+- Per-agent and pairwise logging (distance, error divergence, proximity)
 
 ## Phase 3: Shared Associative Memory
-**Status: 🔲 Planned**
+**Status: ✅ Complete**
 
-- Global memory pool accessible by all agents
-- Agents write observations + predictions to shared store
-- Agents query shared memory for relevant past experiences
-- Attention-weighted retrieval across agents
-- Study whether shared memory accelerates individual learning
-- Memory consolidation and forgetting mechanisms
+- `SharedMemory` global pool accessible by all agents
+- Agent-tagged entries with (key, value, agent_id, metadata)
+- Cosine-similarity retrieval with configurable threshold
+- LRU eviction when capacity exceeded
+- Cross-agent retrieval tracking (hits from other agents)
+- Integrated into `emergence_lab.py` with per-agent shared_reads/cross_hits logging
 
-## Phase 4: Emergent Communication Protocols
-**Status: 🔲 Planned**
+## Phase 4: WorldModel Transition Learning
+**Status: ✅ Complete**
 
-- Agents develop communication signals through interaction
-- Measure mutual information between agents' internal states
-- Detect emergent codebooks or signaling conventions
-- Study how communication affects collective task performance
+- Linear transition predictor (latent + action → next latent)
+- Online SGD trained on each timestep
+- Transition loss tracked and logged per step
+- Can predict next latent state for planning
+- Integrated into both memory_maze.py and emergence_lab.py
 
-## Phase 5: Evolutionary Graph Mutation
+## Phase 5: Emergent Communication Protocols
+**Status: ✅ Complete**
+
+- `CommunicationChannel` for explicit agent message passing
+- Each agent emits a message vector from its internal state
+- Messages broadcast to all agents, appended to observations
+- Mutual information estimation between agent message pairs
+- Communication entropy and protocol coherence metrics
+- Integrated into emergence_lab.py with pairwise MI logging
+
+## Phase 6: Evolutionary Graph Mutation
 **Status: 🔲 Planned**
 
 - Population of PC graph topologies (node types, edge sets, hyperparameters)
@@ -56,7 +67,7 @@
 - Tournament selection, elitism
 - Track best genome across generations
 
-## Phase 6: LLM-Assisted Interpretation
+## Phase 7: LLM-Assisted Interpretation
 **Status: 🔲 Planned**
 
 - Optional integration with LLM APIs for high-level reasoning
@@ -71,12 +82,13 @@
 ## Milestone Timeline
 
 ```
-Phase 1 ──────────────────────────────────────── ● (current)
-Phase 2 ────────────────────────────────────────── ○
-Phase 3 ────────────────────────────────────────── ○
-Phase 4 ────────────────────────────────────────── ○
-Phase 5 ────────────────────────────────────────── ○
+Phase 1 ──────────────────────────────────────── ●
+Phase 2 ──────────────────────────────────────── ●
+Phase 3 ──────────────────────────────────────── ●
+Phase 4 ──────────────────────────────────────── ●
+Phase 5 ──────────────────────────────────────── ● (current)
 Phase 6 ────────────────────────────────────────── ○
+Phase 7 ────────────────────────────────────────── ○
 ```
 
 ## Engineering Principles
