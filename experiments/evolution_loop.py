@@ -10,38 +10,36 @@ Usage:
     POP_SIZE=10 GENERATIONS=5 python experiments/evolution_loop.py
 """
 
-import os
-import sys
 import json
-import math
+import os
 import random
+import sys
 from pathlib import Path
-from typing import Dict, List
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
-import numpy as np
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
 
 jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from fabricpc.nodes import Linear
+from fabricpc.core.activations import IdentityActivation, TanhActivation
+from fabricpc.core.energy import GaussianEnergy
+from fabricpc.core.inference import InferenceSGD, run_inference
+from fabricpc.core.learning import compute_local_weight_gradients
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import (
     initialize_graph_state,
 )
-from fabricpc.core.inference import InferenceSGD, run_inference
-from fabricpc.core.learning import compute_local_weight_gradients
-from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.activations import TanhActivation, IdentityActivation
+from fabricpc.nodes import Linear
 
-from fabricpc_extensions.evolution import Population, PCGenome
+from fabricpc_extensions.evolution import PCGenome, Population
 
 GRID_SIZE = 20
 WINDOW_SIZE = 3
@@ -227,7 +225,7 @@ def _observe(grid: np.ndarray, pos: tuple) -> np.ndarray:
 
 
 def main():
-    print(f"FabricEmergenceLab — Evolution Loop (Phase 6)")
+    print("FabricEmergenceLab — Evolution Loop (Phase 6)")
     print(f"{'='*60}")
     print(f"  Population:  {POP_SIZE}")
     print(f"  Generations: {GENERATIONS}")
@@ -259,7 +257,7 @@ def main():
     best_idx = max(range(len(pop.genomes)), key=lambda i: pop.fitness[i])
     best_g = pop.genomes[best_idx]
     print(f"\n{'='*60}")
-    print(f"  EVOLUTION COMPLETE")
+    print("  EVOLUTION COMPLETE")
     print(f"{'='*60}")
     print(f"  Best genome (fitness={pop.fitness[best_idx]:.4f}):")
     for k, v in best_g.to_dict().items():

@@ -1,6 +1,8 @@
 # FabricEmergenceLab
 
-**A predictive-coding research environment for studying memory, adaptive behavior, and emergent dynamics in autonomous agents.**
+**A predictive-coding research platform for studying emergence in autonomous agents.**
+
+<div align="center">
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![JAX](https://img.shields.io/badge/JAX-latest-e44c2a)](https://jax.readthedocs.io/)
@@ -9,6 +11,29 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 [![Phases 1-7](https://img.shields.io/badge/phases-1%E2%80%937%20%E2%9C%85-8A2BE2)](docs/roadmap.md)
 [![arXiv](https://img.shields.io/badge/arXiv-coming%20soon-lightgrey)](https://arxiv.org)
+
+</div>
+
+---
+
+> **🚀 We Need GPU Contributors** — Phase 6 (evolution) and Phase 8.2 (SimWorld) need GPU access to run at scale. If you have a GPU machine, see [CONTRIBUTING.md](CONTRIBUTING.md) to get involved.
+
+---
+
+## Results So Far
+
+Trained across 7 episodes (1400 steps) on a 20×20 GridWorld:
+
+| Metric | Start | Latest | Change |
+|--------|-------|--------|--------|
+| Prediction error | 0.109 | 0.018 | **↓ 83.6%** |
+| Cells explored | 8 | 48 | **+500%** |
+| Emergence events | — | 214 | detected |
+| Memory retrievals | — | 27,705 | active |
+| Behavioral motifs | — | 94 | forming |
+| Repetitive loops | — | 120 | detected |
+
+**Key finding:** The predictive-coding network demonstrably learns — prediction error collapses over episodes. Agents form stereotyped behavioral motifs and repetitive loops, exhibiting a classic exploration-exploitation tradeoff. See the [full analysis report](logs/ANALYSIS_REPORT.md) for details.
 
 ---
 
@@ -127,21 +152,21 @@ Think of it as a **behavioral microscope** for artificial neural systems. Each a
 FabricEmergenceLab — Memory Maze
 ============================================================
   Grid:        20x20
-  Episodes:    5
+  Episodes:    3-5 per run
   Steps/ep:    200
-  Total steps: 1000
   Window:      3x3
   Explore:     20%
 ============================================================
 
-Episode 0 — Avg Error: 0.2118 → Episode 6 — Avg Error: 0.0180
-Novelty:       0.0200 → 0.0275    (+37.5%)
-Unique states: 8 → 38             (+375%)
-Entropy:       1.7412 → 2.1498    (+23.5%)
+Session aggregate (7 episodes, 5563 steps, 31 metrics):
+  Avg error: 0.1293 (median: 0.0083)
+  First ep:  0.1087 → Last ep: 0.0179  ↓83.6%
+  Unique cells: 48/400 (12.0%)
+  Goals reached: 10
 
-Detected: 718 behavioral motifs, 289 repetitive loops
-★ Emergence Event: sustained_exploration (score=0.85)
-  "Agent explored 42 unique positions in last 50 steps."
+  ★ Detected: 120 repetitive loops, 94 behavioral motifs
+  ★ Memory: 27,705 retrievals across all episodes
+  ★ Latent representation: stable consolidation (0.96x)
 ```
 
 ### Phase 2: Emergence Lab — Multi-Agent Coordination
@@ -228,8 +253,10 @@ LLM Analysis Summary (auto-generated from logs):
 ## Quick Start
 
 ```bash
-# Install FabricPC with CPU backend (or cuda12/cuda13 for GPU)
-pip install -e "fabricpc[all,cpu]"
+# Clone and install
+git clone https://github.com/NullLabTests/FabricEmergenceLab
+cd FabricEmergenceLab
+pip install -e ".[all]"           # install project + all extras
 
 # ── Phase 1: Single-agent Memory Maze ──────────────────
 N_EPISODES=5 python experiments/memory_maze.py
@@ -237,14 +264,14 @@ N_EPISODES=5 python experiments/memory_maze.py
 # ── Phase 2+3+5: Multi-agent with shared memory + communication ──
 N_AGENTS=4 N_EPISODES=3 python experiments/emergence_lab.py
 
-# ── Phase 6: Evolutionary graph mutation ───────────────
+# ── Phase 6: Evolutionary graph mutation (needs GPU for scale) ──
 POP_SIZE=10 GENERATIONS=5 python experiments/evolution_loop.py
 
 # ── Phase 7: LLM-assisted interpretation ───────────────
 LLM_API_KEY=sk-... python scripts/llm_interpret.py
 
 # ── Analysis Pipeline ──────────────────────────────────
-python logs/analysis.py
+python logs/analysis_report.py    # deep statistical analysis
 python scripts/generate_emergence_report.py
 ```
 
@@ -376,6 +403,26 @@ This abstraction allows the same agent to run in different environments without 
 ## Phase 8: The SimWorld Frontier
 
 The first seven phases built a complete, working emergence observatory on discrete GridWorld environments. Phase 8 is the leap into continuous, embodied cognition — and it's where the most interesting science begins.
+
+## 🚀 We Need GPU Contributors
+
+**The evolution loop (Phase 6) and SimWorld integration (Phase 8.2) are bottlenecked on CPU.** Each genome topology in the evolution loop triggers a fresh JAX LLVM compilation, and with POP_SIZE > 8 the machine runs out of memory. A single GPU (6GB+ VRAM) would unlock:
+
+- Population evolution across hundreds of generations
+- Real-time physics simulation with 50+ embodied agents
+- At-scale emergence experiments with publication-ready statistics
+- Phase 8.2 SimWorld UE5 integration for continuous, embodied predictive coding
+
+**What you'd work on:**
+- `experiments/evolution_loop.py` — evolve PC network topologies at scale
+- `fabricpc_extensions/physics_environment.py` — Pymunk physics experiments
+- `adapters/simworld_adapter.py` — SimWorld UE5 bridge
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details, or open a [GPU Contributor Issue](https://github.com/NullLabTests/FabricEmergenceLab/issues/new?labels=GPU-needed&template=gpu_contributor.md).
+
+---
+
+### The Vision
 
 **SimWorld** is a 2D/3D physics simulation environment (under development at [NullLabTests/SimWorld](https://github.com/NullLabTests/SimWorld)) that replaces the discrete 20×20 grid with continuous state spaces governed by gravity, collision, friction, and lighting. Instead of abstract grid cells, agents will have **proprioception** — internal body schemas that predict the sensory consequences of their own actions. The predictive coding framework maps onto this naturally: an agent's generative model predicts its visual stream, its tactile stream, and its proprioceptive stream simultaneously, and the resulting prediction errors drive both learning and behavior.
 

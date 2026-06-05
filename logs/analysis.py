@@ -14,10 +14,9 @@ Loads a JSONL experiment log and reports:
 
 import json
 import sys
-import math
-from pathlib import Path
 from collections import defaultdict
-from typing import List, Dict, Optional
+from pathlib import Path
+from typing import Dict, List
 
 
 def load_jsonl(path: Path) -> List[Dict]:

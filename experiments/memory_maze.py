@@ -21,38 +21,38 @@ Emergence Observatory:
 Requires FabricPC installed (pip install -e fabricpc[all,cpu]).
 """
 
-import os
-import sys
 import json
 import math
+import os
 import random
-from collections import defaultdict, Counter, deque
+import sys
+from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
-import numpy as np
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
 
 jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from fabricpc.nodes import Linear
+from fabricpc.core.activations import IdentityActivation, TanhActivation
+from fabricpc.core.energy import GaussianEnergy
+from fabricpc.core.inference import InferenceSGD, run_inference
+from fabricpc.core.learning import compute_local_weight_gradients
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import (
     initialize_graph_state,
 )
-from fabricpc.core.inference import InferenceSGD, run_inference
-from fabricpc.core.learning import compute_local_weight_gradients
-from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.activations import TanhActivation, IdentityActivation
+from fabricpc.nodes import Linear
 
 from fabricpc_extensions.world_model import WorldModel
 
@@ -570,7 +570,7 @@ def run_episode(
 
 def main():
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"FabricEmergenceLab — Memory Maze")
+    print("FabricEmergenceLab — Memory Maze")
     print(f"{'='*60}")
     print(f"  Grid:        {GRID_SIZE}x{GRID_SIZE}")
     print(f"  Episodes:    {N_EPISODES}")
@@ -597,7 +597,7 @@ def main():
             all_metrics.append(metrics)
 
     print(f"\n{'='*60}")
-    print(f"  EXPERIMENT COMPLETE")
+    print("  EXPERIMENT COMPLETE")
     print(f"{'='*60}")
     avg_error = np.mean([m["avg_prediction_error"] for m in all_metrics])
     avg_novelty = np.mean([m["novelty_score"] for m in all_metrics])

@@ -15,20 +15,18 @@ Usage:
     N_AGENTS=2 N_OBJECTS=3 python experiments/physics_emergence.py
 """
 
-import os
-import sys
 import json
 import math
+import os
 import random
-from collections import defaultdict
+import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
-import numpy as np
 import jax
-import jax.numpy as jnp
+import numpy as np
 
 jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
 
@@ -179,7 +177,7 @@ def run_physics_episode(
 
 
 def main():
-    print(f"FabricEmergenceLab — Physics Emergence (Phase 8.1)")
+    print("FabricEmergenceLab — Physics Emergence (Phase 8.1)")
     print(f"{'='*60}")
     print(f"  World:       {WORLD_WIDTH}x{WORLD_HEIGHT}")
     print(f"  Agents:      {N_AGENTS}")
@@ -229,7 +227,7 @@ def main():
             f.close()
 
     print(f"\n{'='*60}")
-    print(f"  EXPERIMENT COMPLETE")
+    print("  EXPERIMENT COMPLETE")
     print(f"{'='*60}")
     avg_err = np.mean([m["avg_prediction_error"] for m in all_metrics]) if all_metrics else 0
     total_goals = sum(m["goals_reached"] for m in all_metrics)
@@ -237,7 +235,7 @@ def main():
     print(f"  Total goals collected: {total_goals}")
     for i in range(N_AGENTS):
         print(f"  Agent {i} log:  logs/physics_agent_{i}.jsonl")
-    print(f"  Metrics:      logs/physics_metrics.jsonl")
+    print("  Metrics:      logs/physics_metrics.jsonl")
 
 
 if __name__ == "__main__":

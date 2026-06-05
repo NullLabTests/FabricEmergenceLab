@@ -15,7 +15,7 @@ Interface:
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Any, Dict
+from typing import Dict, Tuple
 
 import numpy as np
 

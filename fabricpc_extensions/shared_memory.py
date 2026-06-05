@@ -19,10 +19,9 @@ Usage:
     results = mem.retrieve(query_obs, top_k=5)
 """
 
-import heapq
 import time
 from collections import defaultdict
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 

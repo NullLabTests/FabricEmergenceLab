@@ -24,28 +24,25 @@ Usage:
     N_AGENTS=4 N_EPISODES=3 python experiments/emergence_lab.py
 """
 
-import os
-import sys
 import json
-import math
+import os
 import random
-from collections import defaultdict, Counter
+import sys
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
-import numpy as np
 import jax
-import jax.numpy as jnp
+import numpy as np
 
 jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fabricpc_extensions.agent import PCAgent, compute_episode_metrics
-from fabricpc_extensions.shared_memory import SharedMemory
 from fabricpc_extensions.communication import CommunicationChannel
+from fabricpc_extensions.shared_memory import SharedMemory
 
 N_AGENTS = int(os.environ.get("N_AGENTS", "4"))
 GRID_SIZE = int(os.environ.get("GRID_SIZE", "24"))
@@ -424,7 +421,7 @@ def run_multi_agent_episode(
 
 
 def main():
-    print(f"FabricEmergenceLab — Emergence Lab (Phase 2: Multi-Agent)")
+    print("FabricEmergenceLab — Emergence Lab (Phase 2: Multi-Agent)")
     print(f"{'='*60}")
     print(f"  Grid:        {GRID_SIZE}x{GRID_SIZE}")
     print(f"  Agents:      {N_AGENTS}")
@@ -477,7 +474,7 @@ def main():
 
     # final summary
     print(f"\n{'='*60}")
-    print(f"  EXPERIMENT COMPLETE")
+    print("  EXPERIMENT COMPLETE")
     print(f"{'='*60}")
     if all_episode_metrics:
         avg_errors = [m["avg_prediction_error"] for m in all_episode_metrics]
@@ -490,9 +487,9 @@ def main():
         print(f"  Total goals reached:      {total_goals}")
     for i in range(N_AGENTS):
         print(f"  Agent {i} log:  logs/emergence_agent_{i}.jsonl")
-    print(f"  Pairwise log:  logs/emergence_pairwise.jsonl")
-    print(f"  Events:        logs/emergence_events.jsonl")
-    print(f"  Metrics:       logs/emergence_metrics.jsonl")
+    print("  Pairwise log:  logs/emergence_pairwise.jsonl")
+    print("  Events:        logs/emergence_events.jsonl")
+    print("  Metrics:       logs/emergence_metrics.jsonl")
     print(f"{'='*60}")
 
 

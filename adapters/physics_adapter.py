@@ -11,7 +11,7 @@ Usage:
     obs, reward, done, info = env.step(action_vector)
 """
 
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 import numpy as np
 

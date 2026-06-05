@@ -24,9 +24,10 @@ Usage:
     mi = channel.mutual_information_between(0, 1)
 """
 
-import numpy as np
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
+
+import numpy as np
 
 
 class CommunicationChannel:

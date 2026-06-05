@@ -19,11 +19,10 @@ Usage:
     pop.evolve(generations=20)
 """
 
-import math
 import random
 from copy import deepcopy
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Callable, Dict, List
 
 import numpy as np
 

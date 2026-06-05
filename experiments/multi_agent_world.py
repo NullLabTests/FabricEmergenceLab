@@ -10,7 +10,7 @@ TODO Phase 2 and Phase 3:
 
 import sys
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

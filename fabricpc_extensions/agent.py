@@ -7,26 +7,24 @@ multi-agent (emergence_lab) experiments.
 """
 
 import math
-import random
 from collections import Counter
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
-import numpy as np
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
-
-from fabricpc.nodes import Linear
+from fabricpc.core.activations import IdentityActivation, TanhActivation
+from fabricpc.core.energy import GaussianEnergy
+from fabricpc.core.inference import InferenceSGD, run_inference
+from fabricpc.core.learning import compute_local_weight_gradients
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import (
     initialize_graph_state,
 )
-from fabricpc.core.inference import InferenceSGD, run_inference
-from fabricpc.core.learning import compute_local_weight_gradients
-from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.activations import TanhActivation, IdentityActivation
+from fabricpc.nodes import Linear
 
 from fabricpc_extensions.world_model import WorldModel
 

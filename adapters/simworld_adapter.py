@@ -22,7 +22,7 @@ Future implementation will:
 - Map discrete actions to SimWorld commands
 """
 
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 import numpy as np
 

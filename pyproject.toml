@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fabric-emergence-lab"
+version = "0.1.0"
+description = "Predictive Coding Emergence Observatory — study emergent behaviors in autonomous predictive-coding agents"
+readme = "README.md"
+license = {text = "MIT"}
+keywords = [
+    "predictive-coding",
+    "emergence",
+    "multi-agent",
+    "jax",
+    "machine-learning",
+    "autonomous-agents",
+    "cognitive-science",
+    "research",
+    "artificial-life",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "jax>=0.4.20",
+    "jaxlib>=0.4.20",
+    "numpy>=1.24",
+    "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+physics = ["pymunk>=6.8"]
+llm = ["openai>=1.0", "httpx>=0.27"]
+dev = ["ruff>=0.1", "pytest>=7.0"]
+all = ["pymunk>=6.8", "openai>=1.0", "httpx>=0.27", "ruff>=0.1", "pytest>=7.0"]
+
+[tool.setuptools.dynamic]
+version = {attr = "fabricpc_extensions.__version__"}
+
+[project.urls]
+homepage = "https://github.com/NullLabTests/FabricEmergenceLab"
+repository = "https://github.com/NullLabTests/FabricEmergenceLab"
+documentation = "https://github.com/NullLabTests/FabricEmergenceLab/tree/main/docs"
+bug_tracker = "https://github.com/NullLabTests/FabricEmergenceLab/issues"
+
+[tool.setuptools.packages.find]
+include = ["fabricpc_extensions*", "adapters*", "experiments*", "scripts*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]

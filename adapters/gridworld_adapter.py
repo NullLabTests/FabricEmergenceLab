@@ -6,7 +6,7 @@ allowing experiments to run against the same environment through a uniform API.
 """
 
 import random
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 import numpy as np
 
