@@ -289,3 +289,107 @@
 {"episode": 1, "step": 109, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (2, 4)."}
 {"episode": 1, "step": 129, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 6)."}
 {"episode": 1, "step": 149, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 7)."}
+{"episode": 1, "step": 169, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 7)."}
+{"episode": 1, "step": 189, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (2, 10)."}
+{"episode": 2, "step": 11, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 49, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 0)."}
+{"episode": 2, "step": 69, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 1)."}
+{"episode": 2, "step": 72, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 3, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 73, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (3, 2, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 89, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 2, "step": 106, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 3, 2) repeated 5 times."}
+{"episode": 2, "step": 109, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 2, "step": 119, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 1, 2) repeated 5 times."}
+{"episode": 2, "step": 129, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 2, "step": 140, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 3) repeated 5 times."}
+{"episode": 2, "step": 149, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 3)."}
+{"episode": 2, "step": 169, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 4)."}
+{"episode": 2, "step": 176, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 1, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 180, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (1, 2, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 189, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 5)."}
+{"episode": 0, "step": 27, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 2) repeated 5 times."}
+{"episode": 0, "step": 49, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 9)."}
+{"episode": 0, "step": 69, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 9)."}
+{"episode": 0, "step": 89, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 9)."}
+{"episode": 0, "step": 109, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 8)."}
+{"episode": 0, "step": 111, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 0) repeated 5 times."}
+{"episode": 0, "step": 121, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (3, 2, 2, 2) repeated 5 times."}
+{"episode": 0, "step": 129, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 7)."}
+{"episode": 0, "step": 140, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 1, 2, 2) repeated 5 times."}
+{"episode": 0, "step": 141, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (1, 2, 2, 2) repeated 5 times."}
+{"episode": 0, "step": 149, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 7)."}
+{"episode": 0, "step": 149, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 3, 2) repeated 5 times."}
+{"episode": 0, "step": 169, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 7)."}
+{"episode": 0, "step": 189, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 6)."}
+{"episode": 0, "step": 25, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 2) repeated 5 times."}
+{"episode": 0, "step": 49, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 5)."}
+{"episode": 0, "step": 69, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 5)."}
+{"episode": 0, "step": 89, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 5)."}
+{"episode": 0, "step": 109, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 4)."}
+{"episode": 0, "step": 111, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 0) repeated 5 times."}
+{"episode": 0, "step": 121, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (3, 2, 2, 2) repeated 5 times."}
+{"episode": 0, "step": 129, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 3)."}
+{"episode": 0, "step": 138, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 1) repeated 5 times."}
+{"episode": 0, "step": 141, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (1, 2, 2, 2) repeated 5 times."}
+{"episode": 0, "step": 149, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 0, "step": 149, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 3, 2) repeated 5 times."}
+{"episode": 0, "step": 169, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 0, "step": 189, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 1)."}
+{"episode": 1, "step": 12, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 2) repeated 5 times."}
+{"episode": 1, "step": 39, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 0) repeated 5 times."}
+{"episode": 1, "step": 49, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 0)."}
+{"episode": 1, "step": 63, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 0, 2) repeated 5 times."}
+{"episode": 1, "step": 69, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 0)."}
+{"episode": 1, "step": 89, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 1)."}
+{"episode": 1, "step": 109, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 1)."}
+{"episode": 1, "step": 119, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (3, 2, 2, 2) repeated 5 times."}
+{"episode": 1, "step": 129, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 3)."}
+{"episode": 1, "step": 149, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 4)."}
+{"episode": 1, "step": 169, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 4)."}
+{"episode": 1, "step": 185, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 3, 2) repeated 5 times."}
+{"episode": 1, "step": 186, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 3, 2, 2) repeated 5 times."}
+{"episode": 1, "step": 189, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (2, 7)."}
+{"episode": 1, "step": 194, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 3) repeated 5 times."}
+{"episode": 2, "step": 11, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 49, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 0)."}
+{"episode": 2, "step": 69, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 1)."}
+{"episode": 2, "step": 72, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 3, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 73, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (3, 2, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 89, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 2, "step": 106, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 3, 2) repeated 5 times."}
+{"episode": 2, "step": 109, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 2, "step": 119, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 1, 2) repeated 5 times."}
+{"episode": 2, "step": 129, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 2, "step": 140, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 3) repeated 5 times."}
+{"episode": 2, "step": 149, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 3)."}
+{"episode": 2, "step": 169, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 4)."}
+{"episode": 2, "step": 176, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 1, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 180, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (1, 2, 2, 2) repeated 5 times."}
+{"episode": 2, "step": 189, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 5)."}
+{"episode": 3, "step": 26, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (1, 1, 1, 1) repeated 5 times."}
+{"episode": 3, "step": 47, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 2) repeated 5 times."}
+{"episode": 3, "step": 64, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 15)."}
+{"episode": 3, "step": 84, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 16)."}
+{"episode": 3, "step": 104, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 16)."}
+{"episode": 3, "step": 124, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 16)."}
+{"episode": 3, "step": 144, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 16)."}
+{"episode": 3, "step": 147, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 3, 2, 2) repeated 5 times."}
+{"episode": 3, "step": 153, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 3, 2) repeated 5 times."}
+{"episode": 3, "step": 162, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 3) repeated 5 times."}
+{"episode": 3, "step": 164, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 17)."}
+{"episode": 3, "step": 184, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 18)."}
+{"episode": 4, "step": 21, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 2) repeated 5 times."}
+{"episode": 4, "step": 49, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 4, "step": 69, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 3)."}
+{"episode": 4, "step": 89, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 4)."}
+{"episode": 4, "step": 107, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 1) repeated 5 times."}
+{"episode": 4, "step": 108, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 1, 2) repeated 5 times."}
+{"episode": 4, "step": 109, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 5)."}
+{"episode": 4, "step": 117, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (1, 2, 2, 2) repeated 5 times."}
+{"episode": 4, "step": 129, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 5)."}
+{"episode": 4, "step": 149, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 2)."}
+{"episode": 4, "step": 156, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 0) repeated 5 times."}
+{"episode": 4, "step": 167, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 1, 2, 2) repeated 5 times."}
+{"episode": 4, "step": 169, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 4)."}
+{"episode": 4, "step": 189, "event_type": "repetitive_loop_detected", "novelty_score": 0.6, "description": "Agent entered a repetitive loop near (0, 4)."}
+{"episode": 5, "step": 15, "event_type": "behavioral_motif_established", "novelty_score": 0.25, "description": "Action motif (2, 2, 2, 2) repeated 5 times."}

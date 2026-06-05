@@ -24,10 +24,10 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
+from fabricpc_extensions.ansi import C, banner, header, ok, info, warn, err, star, dim, metric, line
+import numpy as np
 
 import jax
-import numpy as np
 
 jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
 
@@ -87,9 +87,9 @@ def run_physics_episode(
     total_rewards = [0.0] * N_AGENTS
     prev_obs = obs
 
-    print(f"\n{'='*60}")
-    print(f"  Episode {episode + 1}/{N_EPISODES}  ({N_AGENTS} agents, physics, {N_OBJECTS} objects)")
-    print(f"{'='*60}")
+    print(line())
+    print(C.BOLD + C.CYAN + f"  Episode {episode + 1}/{N_EPISODES}  ({N_AGENTS} agents, physics, {N_OBJECTS} objects)" + C.RESET)
+    print(line())
 
     for step in range(N_STEPS):
         # agents observe and predict
@@ -156,7 +156,7 @@ def run_physics_episode(
         info = None  # conserve memory
 
     # episode summary
-    print(f"\n  Episode {episode + 1} summary:")
+    print(f"\n  {C.BOLD}Episode {episode + 1} summary:{C.RESET}")
     metrics = []
     for i in range(N_AGENTS):
         avg_err = float(np.mean(step_errors[i])) if step_errors[i] else 0.0
@@ -169,10 +169,11 @@ def run_physics_episode(
             "unique_cells_visited": len(pos_memory[i]),
             "total_steps": len(step_errors[i]),
         })
-        print(f"  Agent {i}: avg_err={avg_err:.4f} "
-              f"reward={total_rewards[i]:.1f} "
-              f"goals={goals_reached[i]} "
-              f"explored={len(pos_memory[i])} cells")
+        print(f"  {C.GRAY}Agent {i}:{C.RESET} "
+              f"err={C.CYAN}{avg_err:.4f}{C.RESET} "
+              f"reward={C.GREEN}{total_rewards[i]:.1f}{C.RESET} "
+              f"goals={C.PURPLE}{goals_reached[i]}{C.RESET} "
+              f"explored={C.DIM}{len(pos_memory[i])}{C.RESET} cells")
 
     return metrics
 
@@ -213,17 +214,17 @@ def main():
     WORLD_WIDTH = args.world_width
     WORLD_HEIGHT = args.world_height
 
-    print("FabricEmergenceLab — Physics Emergence (Phase 8.1)")
-    print(f"{'='*60}")
-    print(f"  World:       {WORLD_WIDTH}x{WORLD_HEIGHT}")
-    print(f"  Agents:      {N_AGENTS}")
-    print(f"  Objects:     {N_OBJECTS}")
-    print(f"  Goals:       {N_GOALS}")
-    print(f"  Episodes:    {N_EPISODES}")
-    print(f"  Steps/ep:    {N_STEPS}")
-    print(f"  Explore σ:   {EXPLORE_STD}")
-    print(f"  Hidden dim:  {HIDDEN_DIM}")
-    print(f"{'='*60}")
+    print(banner("FabricEmergenceLab — Physics Emergence (Phase 8.1)"))
+    print(line())
+    print(metric("World", f"{WORLD_WIDTH}x{WORLD_HEIGHT}"))
+    print(metric("Agents", N_AGENTS))
+    print(metric("Objects", N_OBJECTS))
+    print(metric("Goals", N_GOALS))
+    print(metric("Episodes", N_EPISODES))
+    print(metric("Steps/ep", N_STEPS))
+    print(metric("Explore σ", EXPLORE_STD))
+    print(metric("Hidden dim", HIDDEN_DIM))
+    print(line())
 
     rng_key = jax.random.PRNGKey(42)
     agent_keys = jax.random.split(rng_key, N_AGENTS + 1)
@@ -262,16 +263,16 @@ def main():
         for f in step_logs:
             f.close()
 
-    print(f"\n{'='*60}")
-    print("  EXPERIMENT COMPLETE")
-    print(f"{'='*60}")
+    print(line())
+    print(C.BOLD + C.GREEN + "  EXPERIMENT COMPLETE" + C.RESET)
+    print(line())
     avg_err = np.mean([m["avg_prediction_error"] for m in all_metrics]) if all_metrics else 0
     total_goals = sum(m["goals_reached"] for m in all_metrics)
-    print(f"  Avg prediction error:  {avg_err:.4f}")
-    print(f"  Total goals collected: {total_goals}")
+    print(metric("Avg prediction error", f"{avg_err:.4f}"))
+    print(metric("Total goals collected", total_goals, C.GREEN))
     for i in range(N_AGENTS):
-        print(f"  Agent {i} log:  logs/physics_agent_{i}.jsonl")
-    print("  Metrics:      logs/physics_metrics.jsonl")
+        print(metric(f"Agent {i} log", f"logs/physics_agent_{i}.jsonl", C.DIM))
+    print(metric("Metrics", "logs/physics_metrics.jsonl", C.DIM))
 
 
 if __name__ == "__main__":

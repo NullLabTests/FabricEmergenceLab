@@ -70,6 +70,20 @@ Think of it as a **behavioral microscope** for artificial neural systems. Each a
 
 ---
 
+## Visualizations
+
+Automatically generated from experiment logs — run `python scripts/visualize.py` to regenerate.
+
+| Dashboard | Error Trajectory |
+|:---:|:---:|
+| ![Dashboard](docs/figures/dashboard.png) | ![Error Trajectory](docs/figures/error_trajectory.png) |
+
+| Exploration | Learning Curve | Emergence Events |
+|:---:|:---:|:---:|
+| ![Exploration](docs/figures/exploration.png) | ![Learning Curve](docs/figures/learning_curve_by_step.png) | ![Events](docs/figures/emergence_events.png) |
+
+---
+
 ## Experiments at a Glance
 
 | Phase | Experiment | Status |
@@ -86,8 +100,62 @@ Think of it as a **behavioral microscope** for artificial neural systems. Each a
 
 ---
 
-## System Map
+## System Architecture
 
+```mermaid
+flowchart TB
+    subgraph Environment["Environment Layer"]
+        GW[GridWorld<br/>20×20 discrete]
+        PW[Pymunk Physics<br/>Continuous 2D]
+        SW[SimWorld<br/>GPU physics -- WIP]
+    end
+
+    subgraph Agent["Agent (per instance)"]
+        PC[FabricPC Network<br/>JAX predictive coding]
+        WM[WorldModel<br/>Latent + transition]
+        AM[AssociativeMemory<br/>Key-value store]
+        BT[BehaviorTracker<br/>Motifs, loops, novelty]
+    end
+
+    subgraph Collective["Collective Layer"]
+        SM[SharedMemory<br/>Cross-agent retrieval]
+        CC[CommunicationChannel<br/>Message vectors, MI]
+        EV[Evolution<br/>PCGenome mutation]
+    end
+
+    subgraph Analysis["Analysis Pipeline"]
+        JL[JSONL Logs<br/>Per-step, per-episode]
+        LLM[LLM Interpreter<br/>Phase 7]
+        AP[Analysis Reports<br/>Metrics, events, plots]
+    end
+
+    Environment -->|obs, reward| Agent
+    Agent -->|actions| Environment
+    Agent -->|store/query| SM
+    Agent -->|broadcast/receive| CC
+    Agent -->|log| JL
+    EV -->|genome| Agent
+    LLM -->|narrative| AP
+    JL -->|data| AP
+```
+
+---
+
+### Data Flow
+
+```mermaid
+flowchart LR
+    O[Observation] --> PC[Predict<br/>Error Minimization]
+    PC --> A[Action Selection]
+    A --> E[Environment Step]
+    E --> O2[Next Observation]
+    O2 --> PC
+    
+    PC -.-> WM[WorldModel<br/>Latent Update]
+    WM -.-> AM[Memory<br/>Store/Retrieve]
+    AM -.-> SM[(Shared Pool)]
+    PC -.-> CC[Message<br/>Broadcast]
+    CC -.-> MI[Mutual Info<br/>Tracking]
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                   FabricEmergenceLab Data Flow                   │
@@ -293,7 +361,8 @@ POP_SIZE=10 GENERATIONS=5 python experiments/evolution_loop.py
 LLM_API_KEY=sk-... python scripts/llm_interpret.py
 
 # ── Analysis Pipeline ──────────────────────────────────
-python logs/analysis_report.py    # deep statistical analysis
+python logs/analysis_report.py        # deep statistical analysis
+python scripts/visualize.py           # generate plots (requires matplotlib)
 python scripts/generate_emergence_report.py
 ```
 

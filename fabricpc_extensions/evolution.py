@@ -26,6 +26,8 @@ from typing import Callable, Dict, List
 
 import numpy as np
 
+from fabricpc_extensions.ansi import C, dim, metric
+
 
 @dataclass
 class PCGenome:
@@ -132,7 +134,7 @@ class Population:
             fit = fitness_fn(genome, eval_episodes)
             new_fitness.append(fit)
             if verbose and (i + 1) % 5 == 0:
-                print(f"  Evaluated {i+1}/{self.size} (fitness={fit:.4f})")
+                print(metric(f"Evaluated {i+1}/{self.size}", f"fitness={fit:.4f}", C.GREEN))
         self.fitness = new_fitness
 
     def _tournament_select(self) -> PCGenome:

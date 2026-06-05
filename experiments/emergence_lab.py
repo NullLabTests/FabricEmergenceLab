@@ -33,6 +33,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from fabricpc_extensions.ansi import C, banner, header, ok, info, warn, err, star, dim, metric, line
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
 import jax
@@ -245,9 +246,9 @@ def run_multi_agent_episode(
         agents[i].pos_memory.visit(world.agent_positions[i])
         shared_mem.store(prev_obs[i], agent_id=i, meta={"pos": world.agent_positions[i]})
 
-    print(f"\n{'='*60}")
-    print(f"  Episode {episode + 1}/{n_episodes}  ({N_AGENTS} agents, comms channel)")
-    print(f"{'='*60}")
+    print(line())
+    print(C.BOLD + C.CYAN + f"  Episode {episode + 1}/{n_episodes}  ({N_AGENTS} agents, comms channel)" + C.RESET)
+    print(line())
 
     for step in range(N_STEPS):
         # 1. each agent picks action
@@ -366,7 +367,7 @@ def run_multi_agent_episode(
                 for ev in events:
                     ev["agent_id"] = i
                     event_log_file.write(json.dumps(ev) + "\n")
-                    print(f"  ★ Agent {i}: {ev['event_type']} (score={ev['novelty_score']})")
+                    print(star(f"  ★ Agent {i}: {ev['event_type']} (score={ev['novelty_score']})"))
 
         prev_obs = curr_obs
         comms_channel.next_step()
@@ -387,7 +388,7 @@ def run_multi_agent_episode(
             pairwise_log.write(json.dumps(pairwise) + "\n")
 
     # episode summary
-    print(f"\n  Episode {episode + 1} summary:")
+    print(f"\n  {C.BOLD}Episode {episode + 1} summary:{C.RESET}")
     all_metrics = []
     for i in range(N_AGENTS):
         metrics = compute_episode_metrics(
@@ -400,12 +401,13 @@ def run_multi_agent_episode(
         metrics["cross_agent_hits"] = cross_agent_hits[i]
         all_metrics.append(metrics)
         comms_stats = comms_channel.stats()
-        print(f"  Agent {i}: avg_err={metrics['avg_prediction_error']:.4f} "
-              f"unique={metrics['unique_states_explored']} "
-              f"reward={metrics['total_reward']:.1f} "
+        print(f"  {C.GRAY}Agent {i}:{C.RESET} "
+              f"err={C.CYAN}{metrics['avg_prediction_error']:.4f}{C.RESET} "
+              f"unique={C.PURPLE}{metrics['unique_states_explored']}{C.RESET} "
+              f"reward={C.GREEN}{metrics['total_reward']:.1f}{C.RESET} "
               f"goals={goals_reached[i]} "
-              f"shared_reads={shared_retrievals[i]} "
-              f"cross_hits={cross_agent_hits[i]}")
+              f"reads={C.ORANGE}{shared_retrievals[i]}{C.RESET} "
+              f"cross={C.DIM}{cross_agent_hits[i]}{C.RESET}")
 
     pairwise = compute_pairwise_metrics(agents, world)
     pairwise["episode"] = episode
@@ -445,16 +447,16 @@ def main():
     TOTAL_OBS_DIM = OBS_DIM + SOCIAL_OBS_DIM + COMMS_OBS_DIM
     n_episodes = N_EPISODES
 
-    print("FabricEmergenceLab — Emergence Lab (Phase 2: Multi-Agent)")
-    print(f"{'='*60}")
-    print(f"  Grid:        {GRID_SIZE}x{GRID_SIZE}")
-    print(f"  Agents:      {N_AGENTS}")
-    print(f"  Episodes:    {n_episodes}")
-    print(f"  Steps/ep:    {N_STEPS}")
-    print(f"  Total steps: {n_episodes * N_STEPS}")
-    print(f"  Obs dim:     {TOTAL_OBS_DIM} (grid {OBS_DIM} + social {SOCIAL_OBS_DIM} + comms {COMMS_OBS_DIM})")
-    print(f"  Explore:     {EXPLORE_RATE*100:.0f}%")
-    print(f"{'='*60}")
+    print(banner("FabricEmergenceLab — Emergence Lab (Phase 2: Multi-Agent)"))
+    print(line())
+    print(metric("Grid", f"{GRID_SIZE}x{GRID_SIZE}"))
+    print(metric("Agents", N_AGENTS))
+    print(metric("Episodes", n_episodes))
+    print(metric("Steps/ep", N_STEPS))
+    print(metric("Total steps", n_episodes * N_STEPS))
+    print(metric("Obs dim", f"{TOTAL_OBS_DIM} (grid {OBS_DIM} + social {SOCIAL_OBS_DIM} + comms {COMMS_OBS_DIM})", C.DIM))
+    print(metric("Explore", f"{EXPLORE_RATE*100:.0f}%"))
+    print(line())
 
     rng_key = jax.random.PRNGKey(42)
     agent_keys = jax.random.split(rng_key, N_AGENTS + 1)
@@ -495,24 +497,24 @@ def main():
         pairwise_log.close()
         event_log.close()
 
-    print(f"\n{'='*60}")
-    print("  EXPERIMENT COMPLETE")
-    print(f"{'='*60}")
+    print(line())
+    print(C.BOLD + C.GREEN + "  EXPERIMENT COMPLETE" + C.RESET)
+    print(line())
     if all_episode_metrics:
         avg_errors = [m["avg_prediction_error"] for m in all_episode_metrics]
         avg_novelty = np.mean([m["novelty_score"] for m in all_episode_metrics])
         total_retrievals = sum(m["memory_retrieval_count"] for m in all_episode_metrics)
         total_goals = sum(m["goals_reached"] for m in all_episode_metrics)
-        print(f"  Avg prediction error:     {np.mean(avg_errors):.4f}")
-        print(f"  Avg novelty score:        {avg_novelty:.4f}")
-        print(f"  Total memory retrievals:  {total_retrievals}")
-        print(f"  Total goals reached:      {total_goals}")
+        print(metric("Avg prediction error", f"{np.mean(avg_errors):.4f}"))
+        print(metric("Avg novelty score", f"{avg_novelty:.4f}"))
+        print(metric("Total memory retrievals", total_retrievals, C.ORANGE))
+        print(metric("Total goals reached", total_goals, C.GREEN))
     for i in range(N_AGENTS):
-        print(f"  Agent {i} log:  logs/emergence_agent_{i}.jsonl")
-    print("  Pairwise log:  logs/emergence_pairwise.jsonl")
-    print("  Events:        logs/emergence_events.jsonl")
-    print("  Metrics:       logs/emergence_metrics.jsonl")
-    print(f"{'='*60}")
+        print(metric(f"Agent {i} log", f"logs/emergence_agent_{i}.jsonl", C.DIM))
+    print(metric("Pairwise log", "logs/emergence_pairwise.jsonl", C.DIM))
+    print(metric("Events", "logs/emergence_events.jsonl", C.DIM))
+    print(metric("Metrics", "logs/emergence_metrics.jsonl", C.DIM))
+    print(line())
 
 
 if __name__ == "__main__":

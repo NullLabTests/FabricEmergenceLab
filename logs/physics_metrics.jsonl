@@ -7,3 +7,11 @@
 {"episode": 1, "agent_id": 1, "avg_prediction_error": 19204.9146, "total_reward": 7.3, "goals_reached": 0, "unique_cells_visited": 6, "total_steps": 100}
 {"episode": 0, "agent_id": 0, "avg_prediction_error": 1.5201, "total_reward": 5.7, "goals_reached": 0, "unique_cells_visited": 4, "total_steps": 50}
 {"episode": 0, "agent_id": 1, "avg_prediction_error": 1.2381, "total_reward": 5.7, "goals_reached": 0, "unique_cells_visited": 4, "total_steps": 50}
+{"episode": 0, "agent_id": 0, "avg_prediction_error": 0.8696, "total_reward": 8.45, "goals_reached": 0, "unique_cells_visited": 9, "total_steps": 200}
+{"episode": 0, "agent_id": 1, "avg_prediction_error": 0.9823, "total_reward": 8.45, "goals_reached": 0, "unique_cells_visited": 9, "total_steps": 200}
+{"episode": 0, "agent_id": 0, "avg_prediction_error": 1.2616, "total_reward": 3.2, "goals_reached": 0, "unique_cells_visited": 4, "total_steps": 100}
+{"episode": 0, "agent_id": 1, "avg_prediction_error": 0.9882, "total_reward": 7.3, "goals_reached": 0, "unique_cells_visited": 6, "total_steps": 100}
+{"episode": 1, "agent_id": 0, "avg_prediction_error": 0.6939, "total_reward": 9.35, "goals_reached": 0, "unique_cells_visited": 7, "total_steps": 100}
+{"episode": 1, "agent_id": 1, "avg_prediction_error": 0.5164, "total_reward": 7.3, "goals_reached": 0, "unique_cells_visited": 6, "total_steps": 100}
+{"episode": 2, "agent_id": 0, "avg_prediction_error": 0.4254, "total_reward": 7.3, "goals_reached": 0, "unique_cells_visited": 6, "total_steps": 100}
+{"episode": 2, "agent_id": 1, "avg_prediction_error": 0.4561, "total_reward": 7.3, "goals_reached": 0, "unique_cells_visited": 6, "total_steps": 100}

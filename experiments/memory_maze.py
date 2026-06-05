@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from fabricpc_extensions.ansi import C, banner, header, ok, info, warn, err, star, dim, metric, line
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
 import jax
@@ -459,9 +460,9 @@ def run_episode(
     agent.memory.store(prev_obs, {"pos": world.agent_pos})
     curiosity = agent.pos_memory.visit(world.agent_pos)
 
-    print(f"\n{'='*60}")
-    print(f"  Episode {episode + 1}/{n_episodes}")
-    print(f"{'='*60}")
+    print(line())
+    print(C.BOLD + C.CYAN + f"  Episode {episode + 1}/{n_episodes}" + C.RESET)
+    print(line())
 
     for step in range(N_STEPS):
         ax, ay = world.agent_pos
@@ -529,11 +530,11 @@ def run_episode(
         if step % 25 == 0 and step > 0:
             avg = np.mean(window_errors)
             print(
-                f"  step {step:4d}/{N_STEPS} | "
-                f"avg_error {avg:.4f} | "
-                f"unique {agent.pos_memory.n_unique():3d} | "
-                f"reward {reward:+.2f} | "
-                f"pos {world.agent_pos}"
+                f"  step {C.GRAY}{step:4d}/{N_STEPS}{C.RESET} | "
+                f"error {C.CYAN}{avg:.4f}{C.RESET} | "
+                f"unique {C.PURPLE}{agent.pos_memory.n_unique():3d}{C.RESET} | "
+                f"reward {C.GREEN}{reward:+.2f}{C.RESET} | "
+                f"pos {C.DIM}{world.agent_pos}{C.RESET}"
             )
             window_errors.clear()
 
@@ -542,7 +543,7 @@ def run_episode(
             for ev in events:
                 event_log.write(json.dumps(ev) + "\n")
                 event_log.flush()
-                print(f"  ★ Emergence: {ev['event_type']} (score={ev['novelty_score']})")
+                print(star(f"  ★ Emergence: {ev['event_type']} (score={ev['novelty_score']})"))
 
         prev_obs = curr_obs
 
@@ -553,17 +554,17 @@ def run_episode(
     metric_log.write(json.dumps(metrics) + "\n")
     metric_log.flush()
 
-    print(f"\n  Episode {episode + 1} summary:")
-    print(f"    avg error:  {metrics['avg_prediction_error']:.4f}")
-    print(f"    var error:  {metrics['prediction_error_variance']:.4f}")
-    print(f"    unique:     {metrics['unique_states_explored']}")
-    print(f"    transitions:{metrics['new_state_transitions']}")
-    print(f"    entropy:    {metrics['agent_entropy']}")
-    print(f"    novelty:    {metrics['novelty_score']}")
-    print(f"    goals:      {goals_reached}")
-    print(f"    reward:     {metrics['total_reward']:.1f}")
-    print(f"    retrievals: {metrics['memory_retrieval_count']}")
-    print(f"  Total events: {len(agent.behavior.detected_events)}")
+    print(f"\n  {C.BOLD}Episode {episode + 1} summary:{C.RESET}")
+    print(metric("avg error", f"{metrics['avg_prediction_error']:.4f}"))
+    print(metric("var error", f"{metrics['prediction_error_variance']:.4f}"))
+    print(metric("unique", metrics['unique_states_explored'], C.PURPLE))
+    print(metric("transitions", metrics['new_state_transitions'], C.PURPLE))
+    print(metric("entropy", metrics['agent_entropy'], C.BLUE))
+    print(metric("novelty", metrics['novelty_score'], C.BLUE))
+    print(metric("goals", goals_reached, C.GREEN))
+    print(metric("reward", f"{metrics['total_reward']:.1f}", C.GREEN))
+    print(metric("retrievals", metrics['memory_retrieval_count'], C.ORANGE))
+    print(f"  {C.GRAY}Total events:{C.RESET} {C.PINK}{len(agent.behavior.detected_events)}{C.RESET}")
 
     return metrics
 
@@ -580,15 +581,15 @@ def main():
     n_episodes = args.episodes
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    print("FabricEmergenceLab — Memory Maze")
-    print(f"{'='*60}")
-    print(f"  Grid:        {GRID_SIZE}x{GRID_SIZE}")
-    print(f"  Episodes:    {n_episodes}")
-    print(f"  Steps/ep:    {N_STEPS}")
-    print(f"  Total steps: {n_episodes * N_STEPS}")
-    print(f"  Window:      {WINDOW_SIZE}x{WINDOW_SIZE}")
-    print(f"  Explore:     {EXPLORE_RATE*100:.0f}%")
-    print(f"{'='*60}")
+    print(banner("FabricEmergenceLab — Memory Maze"))
+    print(line())
+    print(metric("Grid", f"{GRID_SIZE}x{GRID_SIZE}"))
+    print(metric("Episodes", n_episodes))
+    print(metric("Steps/ep", N_STEPS))
+    print(metric("Total steps", n_episodes * N_STEPS))
+    print(metric("Window", f"{WINDOW_SIZE}x{WINDOW_SIZE}"))
+    print(metric("Explore", f"{EXPLORE_RATE*100:.0f}%"))
+    print(line())
 
     rng_key = jax.random.PRNGKey(42)
     agent = PCAgent(rng_key)
@@ -606,9 +607,9 @@ def main():
             metrics = run_episode(ep, agent, step_f, metric_f, event_f, n_episodes)
             all_metrics.append(metrics)
 
-    print(f"\n{'='*60}")
-    print("  EXPERIMENT COMPLETE")
-    print(f"{'='*60}")
+    print(line())
+    print(C.BOLD + C.GREEN + "  EXPERIMENT COMPLETE" + C.RESET)
+    print(line())
     avg_error = np.mean([m["avg_prediction_error"] for m in all_metrics])
     avg_novelty = np.mean([m["novelty_score"] for m in all_metrics])
     total_unique = max(m["unique_states_explored"] for m in all_metrics)
@@ -616,16 +617,16 @@ def main():
     total_goals = sum(m["goals_reached"] for m in all_metrics)
     total_events = sum(len(agent.behavior.detected_events) for m in all_metrics) if hasattr(agent, 'behavior') else 0
 
-    print(f"  Avg prediction error:     {avg_error:.4f}")
-    print(f"  Avg novelty score:        {avg_novelty:.4f}")
-    print(f"  Total unique cells:       {total_unique}")
-    print(f"  Total memory retrievals:  {total_retrievals}")
-    print(f"  Total goals reached:      {total_goals}")
-    print(f"  Emergence events logged:  {total_events}")
-    print(f"  Step log:  {STEP_LOG}")
-    print(f"  Metrics:   {METRIC_LOG}")
-    print(f"  Events:    {EVENT_LOG}")
-    print(f"{'='*60}")
+    print(metric("Avg prediction error", f"{avg_error:.4f}"))
+    print(metric("Avg novelty score", f"{avg_novelty:.4f}"))
+    print(metric("Total unique cells", total_unique, C.PURPLE))
+    print(metric("Total memory retrievals", total_retrievals, C.ORANGE))
+    print(metric("Total goals reached", total_goals, C.GREEN))
+    print(metric("Emergence events logged", total_events, C.PINK))
+    print(metric("Step log", str(STEP_LOG), C.DIM))
+    print(metric("Metrics", str(METRIC_LOG), C.DIM))
+    print(metric("Events", str(EVENT_LOG), C.DIM))
+    print(line())
 
 
 if __name__ == "__main__":

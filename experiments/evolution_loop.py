@@ -18,6 +18,7 @@ import random
 import sys
 from pathlib import Path
 
+from fabricpc_extensions.ansi import C, banner, header, ok, info, warn, err, star, dim, metric, line
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
 import jax
@@ -240,20 +241,20 @@ def main():
     generations = args.generations
     eval_episodes = args.eval_episodes
 
-    print("FabricEmergenceLab — Evolution Loop (Phase 6)")
-    print(f"{'='*60}")
-    print(f"  Population:  {pop_size}")
-    print(f"  Generations: {generations}")
-    print(f"  Eval ep:     {eval_episodes}")
-    print(f"  Steps/ep:    {N_STEPS}")
-    print(f"{'='*60}")
+    print(banner("FabricEmergenceLab — Evolution Loop (Phase 6)"))
+    print(line())
+    print(metric("Population", pop_size))
+    print(metric("Generations", generations))
+    print(metric("Eval ep", eval_episodes))
+    print(metric("Steps/ep", N_STEPS))
+    print(line())
 
     pop = Population(size=pop_size, seed=42)
     log_path = LOG_DIR / "evolution_log.jsonl"
 
     with open(log_path, "w") as f:
         for gen in range(generations):
-            print(f"\n--- Generation {gen + 1}/{generations} ---")
+            print(f"\n{header(f'--- Generation {gen + 1}/{generations} ---')}")
 
             pop.evaluate_all(
                 fitness_fn=lambda g, eps: fitness_function(g),
@@ -266,18 +267,18 @@ def main():
             f.write(json.dumps(stats) + "\n")
             f.flush()
 
-            print(f"  Best fitness: {stats['best_fitness']:.4f}")
-            print(f"  Avg fitness:  {stats['avg_fitness']:.4f}")
+            print(metric("Best fitness", f"{stats['best_fitness']:.4f}", C.GREEN))
+            print(metric("Avg fitness", f"{stats['avg_fitness']:.4f}"))
 
     best_idx = max(range(len(pop.genomes)), key=lambda i: pop.fitness[i])
     best_g = pop.genomes[best_idx]
-    print(f"\n{'='*60}")
-    print("  EVOLUTION COMPLETE")
-    print(f"{'='*60}")
-    print(f"  Best genome (fitness={pop.fitness[best_idx]:.4f}):")
+    print(line())
+    print(C.BOLD + C.GREEN + "  EVOLUTION COMPLETE" + C.RESET)
+    print(line())
+    print(f"  {C.GRAY}Best genome{C.RESET} (fitness={C.GREEN}{pop.fitness[best_idx]:.4f}{C.RESET}):")
     for k, v in best_g.to_dict().items():
-        print(f"    {k}: {v}")
-    print(f"  Log: {log_path}")
+        print(f"    {C.CYAN}{k}:{C.RESET} {v}")
+    print(metric("Log", str(log_path), C.DIM))
 
 
 if __name__ == "__main__":
