@@ -1,0 +1,96 @@
+# Replaced/expanded .gitignore to match the project restructure
+# Python and common tooling
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyd
+
+# Virtual environments
+.env
+.venv
+.env310/
+venv/
+env/
+envs/
+pip-wheel-metadata/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+
+# IDEs / editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# Tests / coverage
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+
+# Mypy / caches
+.mypy_cache/
+.pyre/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and runtime files
+*.log
+logs/
+log_dir/
+outputs/
+runs/
+
+# Aim experiment data logger
+.aim/
+
+# Data, checkpoints, and large artifacts
+data/
+datasets/
+checkpoints/
+models/
+models/*.pt
+models/*.pth
+*.pt
+*.pth
+
+# Project-specific folders that contain generated or big files
+experiments/log_dir/
+experiments/*/log_dir/
+fabricpc/**/checkpoints/
+
+# Notebook/interactive
+nbproject/
+
+# Hypothesis (kept from previous file)
+.hypothesis/
+
+# CI / build artifacts
+.idea/
+.coverage
+
+# Misc
+*.egg-info
+*.zip
+*.tar.gz
+*.jsonl
+
+# Keep track of files that should not be ignored by mistake (example):
+# !important-file.txt
+
+# End of file

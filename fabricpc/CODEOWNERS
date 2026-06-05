@@ -1,0 +1,7 @@
+# CODEOWNERS file
+# This file assigns code reviewers automatically based on file paths.
+# Each line consists of a file pattern followed by one or more GitHub usernames or team names
+# that are responsible for that part of the codebase.
+
+# Global rules
+* @matthewbehrend
