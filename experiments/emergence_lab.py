@@ -334,6 +334,7 @@ def run_multi_agent_episode(
                 "action": actions[i],
                 "total_reward": round(total_rewards[i], 2),
                 "wm_latent_norm": round(wm_update.get("latent_norm", 0.0), 4),
+                "wm_transition_loss": round(wm_update.get("transition_loss", 0.0), 6),
             }
             step_logs[i].write(json.dumps(entry) + "\n")
 

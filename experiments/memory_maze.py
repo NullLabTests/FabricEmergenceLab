@@ -522,6 +522,7 @@ def run_episode(
             "novel_transition": is_novel_transition,
             "wm_latent_norm": round(wm_update.get("latent_norm", 0.0), 4),
             "wm_state_count": wm_update.get("state_count", 0),
+            "wm_transition_loss": round(wm_update.get("transition_loss", 0.0), 6),
         }
         step_log_file.write(json.dumps(entry) + "\n")
 
