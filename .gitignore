@@ -1,24 +1,23 @@
+# Byte-compiled
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.egg-info/
-*.egg
-*.whl
-build/
-dist/
+*$py.class
+
+# Env
+.env
 .venv
 venv/
-.env
+
+# IDE
 .vscode/
 .idea/
-.ipynb_checkpoints/
-.mypy_cache/
-.pytest_cache/
+*.swp
+
+# OS
 .DS_Store
-logs/__pycache__/
-logs/*.log
-*.log
-data/
-checkpoints/
-.aim/
+Thumbs.db
+
+# Build
+dist/
+build/
+*.egg-info/
