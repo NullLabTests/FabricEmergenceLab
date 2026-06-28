@@ -18,7 +18,6 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install ruff
-          pip install jax jaxlib numpy scipy
       - name: Lint with ruff
         run: ruff check .
       - name: Format check with ruff
@@ -38,6 +37,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e ".[dev]"
+          pip install -e "./fabricpc"
       - name: Run tests
         run: pytest -v --tb=short 2>&1 || echo "No tests found yet — skipping"
       - name: Verify experiment can import
