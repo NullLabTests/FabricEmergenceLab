@@ -48,20 +48,20 @@ __version__ = version("fabricpc")
 # first ensures nodes.base is fully initialized before graph_assembly runs.
 from fabricpc import (
     core,
+    experiments,
+    graph_assembly,
     graph_initialization,
     nodes,
     training,
     utils,
-    graph_assembly,
-    experiments,
 )
-
-# Core API - what most users need
-from fabricpc.graph_initialization import initialize_params
-from fabricpc.training import train_pcn, evaluate_pcn
 
 # Types - for type hints
 from fabricpc.core.types import GraphParams, GraphState, GraphStructure
+
+# Core API - what most users need
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.training import evaluate_pcn, train_pcn
 
 __all__ = [
     # Core API (common use)

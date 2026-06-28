@@ -6,17 +6,18 @@ pmap across multiple devices. All functions work transparently on
 1 or N devices.
 """
 
-from typing import Dict, Tuple, Any, cast, List, Optional, Callable
 import math
 import warnings
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+
 import jax
 import jax.numpy as jnp
 import optax
 from tqdm.auto import tqdm as _tqdm_cls
 
-from fabricpc.core.types import GraphParams, GraphState, GraphStructure
 from fabricpc.core.inference import run_inference
 from fabricpc.core.learning import compute_local_weight_gradients
+from fabricpc.core.types import GraphParams, GraphState, GraphStructure
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
 
 # ── pmap utilities ──────────────────────────────────────────────────
@@ -50,9 +51,7 @@ def replicate_opt_state(opt_state: optax.OptState, n_devices: int) -> optax.OptS
     return jax.tree_util.tree_map(lambda x: jnp.stack([x] * n_devices), opt_state)
 
 
-def shard_batch(
-    batch: Dict[str, jnp.ndarray], n_devices: int
-) -> Dict[str, jnp.ndarray]:
+def shard_batch(batch: Dict[str, jnp.ndarray], n_devices: int) -> Dict[str, jnp.ndarray]:
     """
     Shard a batch across devices for pmap.
 
@@ -75,9 +74,7 @@ def shard_batch(
     def shard_array(x):
         batch_size = x.shape[0]
         if batch_size % n_devices != 0:
-            raise ValueError(
-                f"Batch size {batch_size} must be divisible by number of devices {n_devices}"
-            )
+            raise ValueError(f"Batch size {batch_size} must be divisible by number of devices {n_devices}")
         batch_per_device = batch_size // n_devices
         return x.reshape(n_devices, batch_per_device, *x.shape[1:])
 
@@ -197,9 +194,7 @@ def train_step(
     Returns:
         Tuple of (updated_params, updated_opt_state, energy_per_sample, final_state)
     """
-    grads, energy, final_state = get_graph_param_gradient(
-        params, batch, structure, rng_key
-    )
+    grads, energy, final_state = get_graph_param_gradient(params, batch, structure, rng_key)
 
     # Update parameters using optimizer
     updates, opt_state = optimizer.update(grads, opt_state, params)
@@ -233,9 +228,7 @@ def train_step_pmap(
     Returns:
         Tuple of (updated_params, updated_opt_state, energy_per_device, final_state)
     """
-    grads, energy, final_state = get_graph_param_gradient(
-        params, batch, structure, rng_key
-    )
+    grads, energy, final_state = get_graph_param_gradient(params, batch, structure, rng_key)
 
     # Average gradients across all devices (data parallelism)
     grads = jax.lax.pmean(grads, axis_name="devices")
@@ -349,9 +342,7 @@ def train_pcn(
         opt_state = replicate_opt_state(opt_state, n_devices)
         step_fn = create_pmap_train_step(structure, optimizer)
     else:
-        step_fn = jax.jit(
-            lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k)
-        )
+        step_fn = jax.jit(lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k))
 
     # Epoch parameters
     num_epochs = config.get("num_epochs", 10)
@@ -394,9 +385,7 @@ def train_pcn(
             else:
                 device_keys = jnp.expand_dims(epoch_rng_key, axis=0)
 
-            batch_keys_per_device = jax.vmap(
-                lambda k: jax.random.split(k, max_batches)
-            )(device_keys)
+            batch_keys_per_device = jax.vmap(lambda k: jax.random.split(k, max_batches))(device_keys)
         else:
             batch_keys = jax.random.split(epoch_rng_key, max_batches)
 
@@ -413,22 +402,16 @@ def train_pcn(
                     batch_sharded = shard_batch(batch, n_devices)
                 except ValueError as e:
                     if not _shard_warned:
-                        warnings.warn(
-                            f"Skipping batch (size not divisible by {n_devices}): {e}"
-                        )
+                        warnings.warn(f"Skipping batch (size not divisible by {n_devices}): {e}")
                         _shard_warned = True
                     progress.update(1)
                     continue
 
-                params, opt_state, energies, _ = step_fn(
-                    params, opt_state, batch_sharded, batch_key
-                )
+                params, opt_state, energies, _ = step_fn(params, opt_state, batch_sharded, batch_key)
                 energy = unshard_energies(energies)
             else:
                 batch_key = batch_keys[batch_idx]
-                params, opt_state, energy, _ = step_fn(
-                    params, opt_state, batch, batch_key
-                )
+                params, opt_state, energy, _ = step_fn(params, opt_state, batch, batch_key)
                 energy = float(energy)
 
             if iter_callback is not None:
@@ -436,29 +419,21 @@ def train_pcn(
             else:
                 batch_energies.append(energy)
 
-            progress.set_postfix(
-                energy=f"{energy:.4f}", epoch=f"{epoch_idx + 1}/{total_epochs}"
-            )
+            progress.set_postfix(energy=f"{energy:.4f}", epoch=f"{epoch_idx + 1}/{total_epochs}")
             progress.update(1)
 
         iter_results.append(batch_energies)
 
         # Compute average energy for epoch
-        avg_energy = (
-            sum(batch_energies) / len(batch_energies) if batch_energies else 0.0
-        )
+        avg_energy = sum(batch_energies) / len(batch_energies) if batch_energies else 0.0
 
         # Epoch callback (pass single-device params)
         if epoch_callback:
             if use_pmap:
                 single_params = jax.tree_util.tree_map(lambda x: x[0], params)
-                epoch_results.append(
-                    epoch_callback(epoch_idx, single_params, structure, config, rng_key)
-                )
+                epoch_results.append(epoch_callback(epoch_idx, single_params, structure, config, rng_key))
             else:
-                epoch_results.append(
-                    epoch_callback(epoch_idx, params, structure, config, rng_key)
-                )
+                epoch_results.append(epoch_callback(epoch_idx, params, structure, config, rng_key))
         else:
             epoch_results.append(None)
 
@@ -580,9 +555,7 @@ def evaluate_pcn(
 
         replicated_params = replicate_params(params, n_devices)
 
-        batch_keys_per_device = jax.vmap(lambda k: jax.random.split(k, num_batches))(
-            device_keys
-        )
+        batch_keys_per_device = jax.vmap(lambda k: jax.random.split(k, num_batches))(device_keys)
 
         def inference_fn(params_obj, sharded_batch, randgen_key):
             batch_size_ = next(iter(sharded_batch.values())).shape[0]
@@ -592,9 +565,7 @@ def evaluate_pcn(
                     node_name = structure.task_map[task_name]
                     clamps[node_name] = task_value
 
-            state = initialize_graph_state(
-                structure, batch_size_, randgen_key, clamps=clamps, params=params_obj
-            )
+            state = initialize_graph_state(structure, batch_size_, randgen_key, clamps=clamps, params=params_obj)
             final_state = run_inference(params_obj, state, clamps, structure)
             return final_state
 
@@ -612,18 +583,14 @@ def evaluate_pcn(
             if batch_size % n_devices != 0:
                 pad_size = n_devices - (batch_size % n_devices)
                 batch = {
-                    k: jnp.concatenate(
-                        [v, jnp.zeros((pad_size,) + v.shape[1:], dtype=v.dtype)]
-                    )
+                    k: jnp.concatenate([v, jnp.zeros((pad_size,) + v.shape[1:], dtype=v.dtype)])
                     for k, v in batch.items()
                 }
             else:
                 pad_size = 0
 
             batch_sharded = shard_batch(batch, n_devices)
-            final_states = pmap_inference(
-                replicated_params, batch_sharded, batch_key_for_step
-            )
+            final_states = pmap_inference(replicated_params, batch_sharded, batch_key_for_step)
 
             # Compute energy (matching training: only nodes with in_degree > 0)
             batch_energy = 0.0
@@ -670,9 +637,7 @@ def evaluate_pcn(
         for batch_idx, batch_data in enumerate(test_loader):
             batch = _convert_batch(batch_data)
 
-            batch_energy, correct, batch_size = jit_eval_step(
-                params, batch, batch_keys[batch_idx]
-            )
+            batch_energy, correct, batch_size = jit_eval_step(params, batch, batch_keys[batch_idx])
 
             total_energy += float(batch_energy) * int(batch_size)
             total_correct += int(correct)
@@ -725,9 +690,7 @@ def evaluate_transformer(
     except TypeError:
         num_batches = 1000
 
-    batch_keys_per_device = jax.vmap(lambda k: jax.random.split(k, num_batches))(
-        device_keys
-    )
+    batch_keys_per_device = jax.vmap(lambda k: jax.random.split(k, num_batches))(device_keys)
 
     # pmap'd inference function
     def inference_fn(params_obj, sharded_batch, randgen_key):
@@ -738,9 +701,7 @@ def evaluate_transformer(
                 node_name = structure.task_map[task_name]
                 clamps[node_name] = task_value
 
-        state = initialize_graph_state(
-            structure, batch_size_, randgen_key, clamps=clamps, params=params_obj
-        )
+        state = initialize_graph_state(structure, batch_size_, randgen_key, clamps=clamps, params=params_obj)
         final_state = run_inference(params_obj, state, clamps, structure)
         return final_state
 
@@ -762,9 +723,7 @@ def evaluate_transformer(
             continue
 
         batch_sharded = shard_batch(batch, n_devices)
-        final_states = pmap_inference(
-            replicated_params, batch_sharded, batch_key_for_step
-        )
+        final_states = pmap_inference(replicated_params, batch_sharded, batch_key_for_step)
 
         # Calculate energy per device (internal + external/output error)
         def get_device_energy(fs, batch_y):
@@ -816,17 +775,11 @@ def evaluate_transformer(
             softmax_preds = jax.nn.softmax(preds_flat, axis=-1)
 
             if targets.ndim == preds_flat.ndim:
-                batch_ce = -jnp.sum(
-                    targets * jnp.log(jnp.clip(softmax_preds, 1e-10, 1.0))
-                )
-                target_tokens = targets.shape[0] * (
-                    targets.shape[1] if targets.ndim > 1 else 1
-                )
+                batch_ce = -jnp.sum(targets * jnp.log(jnp.clip(softmax_preds, 1e-10, 1.0)))
+                target_tokens = targets.shape[0] * (targets.shape[1] if targets.ndim > 1 else 1)
             else:
                 targets_one_hot = jax.nn.one_hot(targets, preds_flat.shape[-1])
-                batch_ce = -jnp.sum(
-                    targets_one_hot * jnp.log(jnp.clip(softmax_preds, 1e-10, 1.0))
-                )
+                batch_ce = -jnp.sum(targets_one_hot * jnp.log(jnp.clip(softmax_preds, 1e-10, 1.0)))
                 target_tokens = targets.size
 
             total_ce += float(batch_ce)

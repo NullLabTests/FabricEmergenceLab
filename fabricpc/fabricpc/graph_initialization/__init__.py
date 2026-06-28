@@ -3,12 +3,11 @@
 from fabricpc.graph_initialization.params_initializer import (
     initialize_params,
 )
-
 from fabricpc.graph_initialization.state_initializer import (
-    StateInitBase,
+    FeedforwardStateInit,
     GlobalStateInit,
     NodeDistributionStateInit,
-    FeedforwardStateInit,
+    StateInitBase,
     initialize_graph_state,
 )
 

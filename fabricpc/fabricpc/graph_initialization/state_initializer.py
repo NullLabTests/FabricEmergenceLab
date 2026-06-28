@@ -19,21 +19,21 @@ Usage:
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict
 
 import jax
 import jax.numpy as jnp
 
 from fabricpc.core.inference import gather_inputs
-from fabricpc.core.initializers import initialize, NormalInitializer
+from fabricpc.core.initializers import NormalInitializer, initialize
 from fabricpc.core.scaling import scale_inputs
+from fabricpc.core.state_ops import set_latents_to_clamps
 from fabricpc.core.types import (
+    GraphParams,
     GraphState,
     GraphStructure,
-    GraphParams,
     NodeState,
 )
-from fabricpc.core.state_ops import set_latents_to_clamps
 
 # =============================================================================
 # State Initializer Base Class
@@ -139,11 +139,7 @@ class GlobalStateInit(StateInitBase):
             # remaining NodeState fields stay float — they are computed in float
             # by node forward/energy paths regardless of the clamp dtype, and a
             # mixed-dtype carry would break lax.fori_loop type checks.
-            z_latent_dtype = (
-                jnp.asarray(clamps[node_name]).dtype
-                if node_name in clamps
-                else z_latent.dtype
-            )
+            z_latent_dtype = jnp.asarray(clamps[node_name]).dtype if node_name in clamps else z_latent.dtype
 
             node_state_dict[node_name] = NodeState(
                 z_latent=z_latent.astype(z_latent_dtype),
@@ -190,11 +186,7 @@ class NodeDistributionStateInit(StateInitBase):
 
             latent_init = node_info.latent_init
             z_latent = initialize(rng_key_map[node_name], shape, latent_init)
-            z_latent_dtype = (
-                jnp.asarray(clamps[node_name]).dtype
-                if node_name in clamps
-                else z_latent.dtype
-            )
+            z_latent_dtype = jnp.asarray(clamps[node_name]).dtype if node_name in clamps else z_latent.dtype
 
             node_state_dict[node_name] = NodeState(
                 z_latent=z_latent.astype(z_latent_dtype),
@@ -250,11 +242,7 @@ class FeedforwardStateInit(StateInitBase):
 
             latent_init = node_info.latent_init
             z_latent = initialize(rng_key_map[node_name], shape, latent_init)
-            z_latent_dtype = (
-                jnp.asarray(clamps[node_name]).dtype
-                if node_name in clamps
-                else z_latent.dtype
-            )
+            z_latent_dtype = jnp.asarray(clamps[node_name]).dtype if node_name in clamps else z_latent.dtype
 
             node_state_dict[node_name] = NodeState(
                 z_latent=z_latent.astype(z_latent_dtype),
@@ -282,9 +270,7 @@ class FeedforwardStateInit(StateInitBase):
                 # Apply muPC forward scaling (if any) before forward pass,
                 # matching what the inference loop does during training.
                 scaled_inputs = scale_inputs(edge_inputs, node_info.scaling_config)
-                _, projected = node_class.forward(
-                    node_params, scaled_inputs, node_state, node_info
-                )
+                _, projected = node_class.forward(node_params, scaled_inputs, node_state, node_info)
                 # node forward modifies z_mu, pre_activation, error, and energy
 
                 if node_name not in clamps:
@@ -314,9 +300,7 @@ class FeedforwardStateInit(StateInitBase):
 # =============================================================================
 
 
-def _validate_clamp_dtypes(
-    structure: GraphStructure, clamps: Dict[str, jnp.ndarray]
-) -> None:
+def _validate_clamp_dtypes(structure: GraphStructure, clamps: Dict[str, jnp.ndarray]) -> None:
     """
     Reject non-float clamps on internal (in_degree>0) nodes with a clear error.
 
@@ -384,6 +368,4 @@ def initialize_graph_state(
     if state_init is None:
         state_init = structure.config["graph_state_initializer"]
 
-    return type(state_init).initialize_state(
-        structure, batch_size, rng_key, clamps, state_init.config, params
-    )
+    return type(state_init).initialize_state(structure, batch_size, rng_key, clamps, state_init.config, params)

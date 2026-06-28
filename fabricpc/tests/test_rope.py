@@ -6,16 +6,13 @@ import os
 
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
 
-import pytest
 import jax
 import jax.numpy as jnp
-import numpy as np
-
-from fabricpc.core.positional import precompute_freqs_cis, apply_rotary_emb
+import pytest
+from fabricpc.core.positional import apply_rotary_emb, precompute_freqs_cis
 
 
 class TestRoPE:
-
     @pytest.fixture
     def setup_data(self):
         batch_size = 2
@@ -75,9 +72,7 @@ class TestRoPE:
 
         xq_out, _ = apply_rotary_emb(xq_pos0, xk_pos0, freqs_pos0)
 
-        assert jnp.allclose(
-            xq_pos0, xq_out, atol=1e-6
-        ), "Position 0 should not be rotated"
+        assert jnp.allclose(xq_pos0, xq_out, atol=1e-6), "Position 0 should not be rotated"
 
     def test_relative_position_invariance(self, setup_data):
         """
@@ -116,9 +111,7 @@ class TestRoPE:
         dot_B = jnp.sum(q_out_B[0, 0, 0] * k_out_B[0, 1, 0])
 
         # The dot products should be equal
-        assert jnp.allclose(
-            dot_A, dot_B, atol=1e-5
-        ), f"Relative position property failed. {dot_A} != {dot_B}"
+        assert jnp.allclose(dot_A, dot_B, atol=1e-5), f"Relative position property failed. {dot_A} != {dot_B}"
 
     def test_pairwise_rotation_equivalence(self):
         """

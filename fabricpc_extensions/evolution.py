@@ -26,7 +26,7 @@ from typing import Callable, Dict, List
 
 import numpy as np
 
-from fabricpc_extensions.ansi import C, dim, metric
+from fabricpc_extensions.ansi import C, metric
 
 
 @dataclass
@@ -134,7 +134,7 @@ class Population:
             fit = fitness_fn(genome, eval_episodes)
             new_fitness.append(fit)
             if verbose and (i + 1) % 5 == 0:
-                print(metric(f"Evaluated {i+1}/{self.size}", f"fitness={fit:.4f}", C.GREEN))
+                print(metric(f"Evaluated {i + 1}/{self.size}", f"fitness={fit:.4f}", C.GREEN))
         self.fitness = new_fitness
 
     def _tournament_select(self) -> PCGenome:
@@ -149,9 +149,7 @@ class Population:
         best_genome = deepcopy(self.genomes[best_idx])
         best_fitness = self.fitness[best_idx]
 
-        ranked = sorted(
-            range(self.size), key=lambda i: self.fitness[i], reverse=True
-        )
+        ranked = sorted(range(self.size), key=lambda i: self.fitness[i], reverse=True)
         elites = [deepcopy(self.genomes[i]) for i in ranked[: self.elite_size]]
 
         next_genomes = elites[:]
@@ -169,16 +167,16 @@ class Population:
         self.genomes = next_genomes[: self.size]
         self.generation += 1
 
-        self.history.append({
-            "generation": self.generation,
-            "best_fitness": round(best_fitness, 4),
-            "avg_fitness": round(float(np.mean(self.fitness)), 4),
-            "best_genome": best_genome.to_dict(),
-        })
+        self.history.append(
+            {
+                "generation": self.generation,
+                "best_fitness": round(best_fitness, 4),
+                "avg_fitness": round(float(np.mean(self.fitness)), 4),
+                "best_genome": best_genome.to_dict(),
+            }
+        )
 
-        print(f"  Generation {self.generation}: "
-              f"best={best_fitness:.4f} "
-              f"avg={float(np.mean(self.fitness)):.4f}")
+        print(f"  Generation {self.generation}: best={best_fitness:.4f} avg={float(np.mean(self.fitness)):.4f}")
 
     def stats(self) -> Dict:
         return {

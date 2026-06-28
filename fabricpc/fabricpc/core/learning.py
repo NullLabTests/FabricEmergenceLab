@@ -1,6 +1,6 @@
-from fabricpc.core.types import GraphParams, GraphState, GraphStructure, NodeParams
 from fabricpc.core.inference import gather_inputs
 from fabricpc.core.scaling import scale_inputs, scale_weight_grads
+from fabricpc.core.types import GraphParams, GraphState, GraphStructure, NodeParams
 
 
 def compute_local_weight_gradients(

@@ -6,9 +6,8 @@ os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
 os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.9")
 os.environ.setdefault("JAX_TRACEBACK_FILTERING", "off")
 
-import pytest
 import jax
-
+import pytest
 from fabricpc.core.inference import InferenceSGD
 
 jax.config.update("jax_platform_name", "cpu")

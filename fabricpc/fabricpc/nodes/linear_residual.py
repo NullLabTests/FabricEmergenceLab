@@ -31,20 +31,21 @@ Example — a residual chain::
 
 from __future__ import annotations
 
-from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
-import numpy as np
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
+import numpy as np
 
-from fabricpc.nodes.base import (
-    NodeBase,
-    SlotSpec,
-    FlattenInputMixin,
-)
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
 from fabricpc.core.activations import IdentityActivation
 from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.initializers import NormalInitializer, KaimingInitializer, initialize
+from fabricpc.core.initializers import KaimingInitializer, NormalInitializer, initialize
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
+from fabricpc.nodes.base import (
+    FlattenInputMixin,
+    NodeBase,
+    SlotSpec,
+)
 
 if TYPE_CHECKING:
     from fabricpc.core.activations import ActivationBase
@@ -121,9 +122,7 @@ class LinearResidual(FlattenInputMixin, NodeBase):
         in_slot_shapes = {k: v for k, v in input_shapes.items() if ":in" in k}
 
         weights_dict = {}
-        rand_key_w = dict(
-            zip(in_slot_shapes.keys(), jax.random.split(key_w, len(in_slot_shapes)))
-        )
+        rand_key_w = dict(zip(in_slot_shapes.keys(), jax.random.split(key_w, len(in_slot_shapes))))
 
         for edge_key, in_shape in in_slot_shapes.items():
             if flatten_input:
@@ -135,9 +134,7 @@ class LinearResidual(FlattenInputMixin, NodeBase):
                 out_features = node_shape[-1]
                 weight_shape = (in_features, out_features)
 
-            weights_dict[edge_key] = initialize(
-                rand_key_w[edge_key], weight_shape, weight_init
-            )
+            weights_dict[edge_key] = initialize(rand_key_w[edge_key], weight_shape, weight_init)
 
         # Bias
         use_bias = config.get("use_bias", True)
@@ -167,15 +164,11 @@ class LinearResidual(FlattenInputMixin, NodeBase):
 
         # Linear transform on "in" slot inputs
         if flatten_input:
-            pre_activation = FlattenInputMixin.compute_linear(
-                in_inputs, params.weights, batch_size, out_shape
-            )
+            pre_activation = FlattenInputMixin.compute_linear(in_inputs, params.weights, batch_size, out_shape)
         else:
             pre_activation = jnp.zeros((batch_size,) + out_shape)
             for edge_key, x in in_inputs.items():
-                pre_activation = pre_activation + jnp.matmul(
-                    x, params.weights[edge_key]
-                )
+                pre_activation = pre_activation + jnp.matmul(x, params.weights[edge_key])
 
         # Add bias
         if "b" in params.biases and params.biases["b"].size > 0:

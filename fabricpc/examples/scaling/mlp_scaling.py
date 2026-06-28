@@ -43,24 +43,24 @@ os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
 os.environ.setdefault("JAX_PLATFORMS", "cuda")
 os.environ["XLA_FLAGS"] = "--xla_gpu_deterministic_ops=true"
 
-import jax
-import jax.numpy as jnp
-import time
+import argparse
 import csv
+import json
 import subprocess
 import sys
-import json
-import argparse
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Tuple, Optional
+import time
+from dataclasses import asdict, dataclass
+from typing import Dict, List, Optional, Tuple
 
-from fabricpc.nodes import Linear
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params, FeedforwardStateInit
+import jax
+import jax.numpy as jnp
+import optax
 from fabricpc.core.activations import IdentityActivation, SigmoidActivation
 from fabricpc.core.inference import InferenceSGD
-import optax
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import FeedforwardStateInit, initialize_params
+from fabricpc.nodes import Linear
 from fabricpc.training.train import train_step
 from fabricpc.training.train_backprop import train_step_backprop
 
@@ -129,25 +129,19 @@ def create_mlp_model(
     Returns:
         (params, structure) tuple
     """
-    input_node = Linear(
-        shape=(input_dim,), activation=IdentityActivation(), name="input"
-    )
+    input_node = Linear(shape=(input_dim,), activation=IdentityActivation(), name="input")
 
     nodes = [input_node]
     edges = []
     prev_node = input_node
 
     for i in range(num_layers):
-        hidden = Linear(
-            shape=(hidden_width,), activation=SigmoidActivation(), name=f"hidden_{i}"
-        )
+        hidden = Linear(shape=(hidden_width,), activation=SigmoidActivation(), name=f"hidden_{i}")
         nodes.append(hidden)
         edges.append(Edge(source=prev_node, target=hidden.slot("in")))
         prev_node = hidden
 
-    output_node = Linear(
-        shape=(output_dim,), activation=SigmoidActivation(), name="output"
-    )
+    output_node = Linear(shape=(output_dim,), activation=SigmoidActivation(), name="output")
     nodes.append(output_node)
     edges.append(Edge(source=prev_node, target=output_node.slot("in")))
 
@@ -215,9 +209,7 @@ def run_timed_training_pc(
     opt_state = optimizer.init(params)
 
     # JIT compile the training step
-    jit_train_step = jax.jit(
-        lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k)
-    )
+    jit_train_step = jax.jit(lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k))
 
     keys = jax.random.split(rng_key, num_steps + num_warmup)
 
@@ -234,9 +226,7 @@ def run_timed_training_pc(
     start_time = time.perf_counter()
     for i in range(num_steps):
         batch = batches[(i + num_warmup) % len(batches)]
-        params, opt_state, _, _ = jit_train_step(
-            params, opt_state, batch, keys[i + num_warmup]
-        )
+        params, opt_state, _, _ = jit_train_step(params, opt_state, batch, keys[i + num_warmup])
     jax.block_until_ready(params)  # Ensure all computation complete
     end_time = time.perf_counter()
 
@@ -259,11 +249,7 @@ def run_timed_training_backprop(
     opt_state = optimizer.init(params)
 
     # JIT compile the training step
-    jit_train_step = jax.jit(
-        lambda p, o, b, k: train_step_backprop(
-            p, o, b, structure, optimizer, k, "cross_entropy"
-        )
-    )
+    jit_train_step = jax.jit(lambda p, o, b, k: train_step_backprop(p, o, b, structure, optimizer, k, "cross_entropy"))
 
     keys = jax.random.split(rng_key, num_steps + num_warmup)
 
@@ -280,9 +266,7 @@ def run_timed_training_backprop(
     start_time = time.perf_counter()
     for i in range(num_steps):
         batch = batches[(i + num_warmup) % len(batches)]
-        params, opt_state, _ = jit_train_step(
-            params, opt_state, batch, keys[i + num_warmup]
-        )
+        params, opt_state, _ = jit_train_step(params, opt_state, batch, keys[i + num_warmup])
     jax.block_until_ready(params)  # Ensure all computation complete
     end_time = time.perf_counter()
 
@@ -325,9 +309,7 @@ def run_single_experiment(
     num_params = count_params(params)
 
     # Generate data
-    batches = generate_synthetic_data(
-        data_key, batch_size, width, width, num_steps + num_warmup
-    )
+    batches = generate_synthetic_data(data_key, batch_size, width, width, num_steps + num_warmup)
 
     # Training config
     train_config = {
@@ -492,14 +474,10 @@ def run_all_experiments(
 def parse_single_experiment_args() -> Optional[argparse.Namespace]:
     """Parse CLI arguments for single experiment mode."""
     parser = argparse.ArgumentParser(description="MLP Scaling Experiment")
-    parser.add_argument(
-        "--run-single", action="store_true", help="Run single experiment mode"
-    )
+    parser.add_argument("--run-single", action="store_true", help="Run single experiment mode")
     parser.add_argument("--width", type=int, help="Hidden layer width")
     parser.add_argument("--depth", type=int, help="Number of hidden layers")
-    parser.add_argument(
-        "--mode", type=str, choices=["pc", "backprop"], help="Training mode"
-    )
+    parser.add_argument("--mode", type=str, choices=["pc", "backprop"], help="Training mode")
     parser.add_argument("--seed", type=int, help="Random seed")
     parser.add_argument("--batch-size", type=int, help="Batch size")
     parser.add_argument("--num-steps", type=int, help="Number of training steps")
@@ -545,9 +523,7 @@ def print_summary_table(results: List[ScalingResult]):
     """Print a formatted summary table."""
     print("\nSummary Table:")
     print("-" * 95)
-    print(
-        f"{'Mode':<10} | {'Width':<7} | {'Depth':<6} | {'Params':<12} | {'Time (ms)':<12} | {'Memory (MB)':<12}"
-    )
+    print(f"{'Mode':<10} | {'Width':<7} | {'Depth':<6} | {'Params':<12} | {'Time (ms)':<12} | {'Memory (MB)':<12}")
     print("-" * 95)
 
     for r in results:
@@ -561,8 +537,8 @@ def print_summary_table(results: List[ScalingResult]):
 def plot_results(results: List[ScalingResult], output_dir: str = "."):
     """Generate scaling law plots using Plotly."""
     try:
-        import plotly.express as px
         import pandas as pd
+        import plotly.express as px
     except ImportError:
         print("plotly/pandas not available, skipping plots")
         return
@@ -717,9 +693,7 @@ def main():
     print(f"Training steps: {NUM_TRAINING_STEPS} (+ {NUM_WARMUP_STEPS} warmup)")
     print(f"PC inference steps: {INFER_STEPS}")
     print()
-    print(
-        "Note: Each experiment runs in isolated subprocess for accurate memory measurement."
-    )
+    print("Note: Each experiment runs in isolated subprocess for accurate memory measurement.")
 
     # Run all experiments via subprocesses
     all_results = run_all_experiments(

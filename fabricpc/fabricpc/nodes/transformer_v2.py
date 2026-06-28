@@ -8,33 +8,34 @@ Decomposed transformer pipeline — each stage is a separate PC node:
                         └──────────┘              └───────────┘
 """
 
-from typing import Dict, Any, Tuple, Optional
+from typing import Any, Dict, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
 
-from fabricpc.nodes.base import NodeBase, SlotSpec
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
-from fabricpc.core.initializers import (
-    InitializerBase,
-    initialize,
-    NormalInitializer,
-    XavierInitializer,
-    KaimingInitializer,
-)
-from fabricpc.core.positional import precompute_freqs_cis, apply_rotary_emb
-from fabricpc.utils.helpers import layernorm
-
-# Builder Imports
-from fabricpc.nodes.linear import Linear
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.core.activations import (
     GeluActivation,
     IdentityActivation,
     SoftmaxActivation,
 )
-from fabricpc.core.energy import KLDivergenceEnergy, GaussianEnergy
+from fabricpc.core.energy import GaussianEnergy, KLDivergenceEnergy
 from fabricpc.core.inference import InferenceBase
+from fabricpc.core.initializers import (
+    InitializerBase,
+    KaimingInitializer,
+    NormalInitializer,
+    XavierInitializer,
+    initialize,
+)
+from fabricpc.core.positional import apply_rotary_emb, precompute_freqs_cis
+from fabricpc.core.topology import Edge
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.nodes.base import NodeBase, SlotSpec
+
+# Builder Imports
+from fabricpc.nodes.linear import Linear
+from fabricpc.utils.helpers import layernorm
 
 # ==============================================================================
 # EMBEDDING NODE
@@ -70,9 +71,7 @@ class EmbeddingNode(NodeBase):
     @staticmethod
     def get_slots() -> Dict[str, SlotSpec]:
         # Discrete token indices, not a continuous signal — keep muPC scaling off.
-        return {
-            "in": SlotSpec(name="in", is_multi_input=False, is_variance_scalable=False)
-        }
+        return {"in": SlotSpec(name="in", is_multi_input=False, is_variance_scalable=False)}
 
     @staticmethod
     def initialize_params(
@@ -116,15 +115,11 @@ class EmbeddingNode(NodeBase):
     def forward_and_latent_grads(params, inputs, state, node_info, is_clamped=False):
         _, new_state = node_info.node_class.forward(params, inputs, state, node_info)
         # Discrete indices: no gradient flows back through the input edge.
-        input_grads = {
-            edge_key: jnp.zeros_like(inp) for edge_key, inp in inputs.items()
-        }
+        input_grads = {edge_key: jnp.zeros_like(inp) for edge_key, inp in inputs.items()}
         # Self-grad anchors z_latent to the lookup z_mu. Computed explicitly
         # because this override skips the base autodiff path.
         energy_obj = node_info.energy
-        self_grad = type(energy_obj).grad_latent(
-            new_state.z_latent, new_state.z_mu, energy_obj.config
-        )
+        self_grad = type(energy_obj).grad_latent(new_state.z_latent, new_state.z_mu, energy_obj.config)
         return new_state, input_grads, self_grad
 
 
@@ -217,9 +212,7 @@ class MhaResidualNode(NodeBase):
         V = proj(x_norm, "W_v", "b_v").reshape(B, L, num_heads, head_dim)
 
         if cfg.get("use_rope"):
-            freqs_cis = precompute_freqs_cis(
-                head_dim, L, theta=cfg.get("rope_theta", 10000.0)
-            )
+            freqs_cis = precompute_freqs_cis(head_dim, L, theta=cfg.get("rope_theta", 10000.0))
             Q, K = apply_rotary_emb(Q, K, freqs_cis)
 
         Q, K, V = (
@@ -347,9 +340,7 @@ class Mlp2ResidualNode(NodeBase):
     def get_slots():
         return {
             "in": SlotSpec("in", False),
-            "residual": SlotSpec(
-                "residual", False, is_variance_scalable=False, is_skip_connection=True
-            ),
+            "residual": SlotSpec("residual", False, is_variance_scalable=False, is_skip_connection=True),
         }
 
     @staticmethod
@@ -461,9 +452,7 @@ def create_deep_transformer(
     nodes = []
     edges = []
 
-    input_node = Linear(
-        shape=(seq_len,), activation=IdentityActivation(), name="input_ids"
-    )
+    input_node = Linear(shape=(seq_len,), activation=IdentityActivation(), name="input_ids")
     nodes.append(input_node)
 
     embed_node = EmbeddingNode(

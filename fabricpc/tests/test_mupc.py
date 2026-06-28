@@ -11,22 +11,22 @@ Covers:
 
 import math
 import warnings
-import pytest
+
 import jax
 import jax.numpy as jnp
-
-from fabricpc.nodes import Linear
-from fabricpc.nodes.identity import IdentityNode
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
+import pytest
+from fabricpc.core.activations import IdentityActivation, ReLUActivation, TanhActivation
 from fabricpc.core.inference import InferenceSGD, run_inference
 from fabricpc.core.initializers import MuPCInitializer
-from fabricpc.core.activations import IdentityActivation, ReLUActivation, TanhActivation
+from fabricpc.core.learning import compute_local_weight_gradients
 from fabricpc.core.mupc import MuPCConfig, MuPCScalingFactors
+from fabricpc.core.state_ops import set_latents_to_clamps
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
-from fabricpc.core.state_ops import set_latents_to_clamps
-from fabricpc.core.learning import compute_local_weight_gradients
+from fabricpc.nodes import Linear
+from fabricpc.nodes.identity import IdentityNode
 
 # ============================================================================
 # Fixtures
@@ -361,13 +361,7 @@ class TestVariancePropagation:
         )
         # h1: fan_in=10 -> a=1/sqrt(10)
         h1_edge = structure.nodes["h1"].node_info.in_edges[0]
-        assert (
-            abs(
-                structure.nodes["h1"].node_info.scaling_config.forward_scale[h1_edge]
-                - 1.0 / math.sqrt(10)
-            )
-            < 1e-10
-        )
+        assert abs(structure.nodes["h1"].node_info.scaling_config.forward_scale[h1_edge] - 1.0 / math.sqrt(10)) < 1e-10
 
         # h2, h3: fan_in=20 -> a=1/sqrt(20), both identical
         h2_edge = structure.nodes["h2"].node_info.in_edges[0]
@@ -522,9 +516,7 @@ class TestSkipConnectionScaling:
             def get_slots():
                 return {
                     "in": SlotSpec(name="in", is_multi_input=False),
-                    "meta": SlotSpec(
-                        name="meta", is_multi_input=False, is_variance_scalable=False
-                    ),
+                    "meta": SlotSpec(name="meta", is_multi_input=False, is_variance_scalable=False),
                 }
 
             @staticmethod
@@ -533,15 +525,13 @@ class TestSkipConnectionScaling:
 
             @staticmethod
             def initialize_params(key, node_shape, input_shapes, weight_init, config):
-                from fabricpc.core.types import NodeParams
                 import jax
+                from fabricpc.core.types import NodeParams
 
                 weights = {}
                 for edge_key, in_shape in input_shapes.items():
                     if ":in" in edge_key:
-                        weights[edge_key] = jax.random.normal(
-                            key, (in_shape[-1], node_shape[-1])
-                        )
+                        weights[edge_key] = jax.random.normal(key, (in_shape[-1], node_shape[-1]))
                 return NodeParams(weights, {})
 
             @staticmethod
@@ -579,18 +569,14 @@ class TestSkipConnectionScaling:
         )
         # L should be 1 (no skip connections), NOT 2
         # mn: fan_in=10, K=1, L=1 -> a = 1/sqrt(10)
-        mn_in_edge = next(
-            e for e in structure.nodes["mn"].node_info.in_edges if ":in" in e
-        )
+        mn_in_edge = next(e for e in structure.nodes["mn"].node_info.in_edges if ":in" in e)
         a_mn = structure.nodes["mn"].node_info.scaling_config.forward_scale[mn_in_edge]
         expected_a = 1.0 / math.sqrt(10)
         assert abs(a_mn - expected_a) < 1e-10
 
         # Meta edge passes through unscaled — non-scalable slots are absent
         # from the per-edge dicts (callsites treat missing keys as no-op).
-        mn_meta_edge = next(
-            e for e in structure.nodes["mn"].node_info.in_edges if ":meta" in e
-        )
+        mn_meta_edge = next(e for e in structure.nodes["mn"].node_info.in_edges if ":meta" in e)
         scaling = structure.nodes["mn"].node_info.scaling_config
         assert mn_meta_edge not in scaling.forward_scale
         assert mn_meta_edge not in scaling.topdown_grad_scale
@@ -717,18 +703,12 @@ class TestEndToEnd:
         # Train for a few steps
         for i in range(5):
             step_key = jax.random.fold_in(k3, i)
-            params, opt_state, loss, _ = train_step(
-                params, opt_state, batch, structure, optimizer, step_key
-            )
+            params, opt_state, loss, _ = train_step(params, opt_state, batch, structure, optimizer, step_key)
 
         # Final energy
         state_f = initialize_graph_state(structure, batch_size, rng_key, params=params)
         state_f = set_latents_to_clamps(state_f, batch)
         state_f = run_inference(params, state_f, batch, structure)
-        energy_f = sum(
-            float(jnp.mean(state_f.nodes[n].energy)) for n in structure.nodes
-        )
+        energy_f = sum(float(jnp.mean(state_f.nodes[n].energy)) for n in structure.nodes)
 
-        assert (
-            energy_f < energy_0
-        ), f"Energy did not decrease: {energy_0:.6f} -> {energy_f:.6f}"
+        assert energy_f < energy_0, f"Energy did not decrease: {energy_0:.6f} -> {energy_f:.6f}"

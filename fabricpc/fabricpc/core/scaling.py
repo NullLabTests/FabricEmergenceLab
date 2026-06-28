@@ -17,14 +17,12 @@ Usage in learning loop (graph_net.py):
     grad_params = scale_weight_grads(grad_params, node_info.scaling_config)
 """
 
-from typing import Dict, Optional
+# TYPE_CHECKING avoids circular import with mupc.py
+from typing import TYPE_CHECKING, Dict, Optional
 
 import jax.numpy as jnp
 
 from fabricpc.core.types import NodeParams
-
-# TYPE_CHECKING avoids circular import with mupc.py
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fabricpc.core.mupc import MuPCScalingFactors
@@ -105,7 +103,5 @@ def scale_weight_grads(
     if scaling_config is None:
         return params_grad
     wg_scale = scaling_config.weight_grad_scale
-    scaled_weights = {
-        k: grad * wg_scale.get(k, 1.0) for k, grad in params_grad.weights.items()
-    }
+    scaled_weights = {k: grad * wg_scale.get(k, 1.0) for k, grad in params_grad.weights.items()}
     return NodeParams(weights=scaled_weights, biases=params_grad.biases)

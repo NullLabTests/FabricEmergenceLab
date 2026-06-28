@@ -41,55 +41,53 @@ set_jax_flags_before_importing_jax()
 
 import argparse
 import math
+import time
+from typing import Any, Dict, List, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
 import numpy as np
-import time
-from typing import Tuple, Dict, List, Optional, Any
-from tqdm.auto import tqdm
-
-from fabricpc.nodes import (
-    Linear,
-    TransformerBlock,
-    IdentityNode,
-    SkipConnection,
-    EmbeddingNode,
-)
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params, FeedforwardStateInit
-from fabricpc.core.mupc import MuPCConfig
+import optax
 from fabricpc.core.activations import (
-    SoftmaxActivation,
     GeluActivation,
+    SoftmaxActivation,
 )
 from fabricpc.core.energy import CrossEntropyEnergy
+from fabricpc.core.inference import InferenceSGDNormClip
 from fabricpc.core.initializers import (
     NormalInitializer,
-    MuPCInitializer,
 )
-from fabricpc.core.inference import InferenceSGDNormClip
-import optax
+from fabricpc.core.mupc import MuPCConfig
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import FeedforwardStateInit, initialize_graph_state, initialize_params
+from fabricpc.nodes import (
+    EmbeddingNode,
+    IdentityNode,
+    Linear,
+    SkipConnection,
+    TransformerBlock,
+)
 from fabricpc.training.train_autoregressive import (
-    train_step_autoregressive,
-    generate_autoregressive,
-    evaluate_autoregressive,
     create_causal_mask,
-)
-from fabricpc.graph_initialization import initialize_graph_state
-from fabricpc.utils.dashboarding.inference_tracking import (
-    run_inference_with_full_history,
+    evaluate_autoregressive,
+    generate_autoregressive,
+    train_step_autoregressive,
 )
 from fabricpc.training.train_backprop import (
-    train_step_backprop_autoregressive,
     evaluate_backprop_autoregressive,
+    train_step_backprop_autoregressive,
 )
 from fabricpc.utils.dashboarding import (
     AimExperimentTracker,
     TrackingConfig,
     is_aim_available,
 )
+from fabricpc.utils.dashboarding.inference_tracking import (
+    run_inference_with_full_history,
+)
 from fabricpc.utils.data import CharDataLoader
+from tqdm.auto import tqdm
 
 jax.config.update("jax_default_prng_impl", "threefry2x32")
 
@@ -97,9 +95,7 @@ TRACKED_NODES = ["embed", "transformer_0"]
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Transformer PC/Backprop demo on TinyShakespeare"
-    )
+    parser = argparse.ArgumentParser(description="Transformer PC/Backprop demo on TinyShakespeare")
     parser.add_argument(
         "--mode",
         choices=["pc", "backprop"],
@@ -107,18 +103,10 @@ def parse_args():
         help="Training mode: predictive coding or backpropagation (default: pc)",
     )
     parser.add_argument("--seq_len", type=int, default=128, help="Sequence length")
-    parser.add_argument(
-        "--embed_dim", type=int, default=128, help="Embedding dimension"
-    )
-    parser.add_argument(
-        "--num_heads", type=int, default=8, help="Number of attention heads"
-    )
-    parser.add_argument(
-        "--num_blocks", type=int, default=1, help="Number of transformer blocks"
-    )
-    parser.add_argument(
-        "--ff_dim", type=int, default=512, help="Feed-forward hidden dimension"
-    )
+    parser.add_argument("--embed_dim", type=int, default=128, help="Embedding dimension")
+    parser.add_argument("--num_heads", type=int, default=8, help="Number of attention heads")
+    parser.add_argument("--num_blocks", type=int, default=1, help="Number of transformer blocks")
+    parser.add_argument("--ff_dim", type=int, default=512, help="Feed-forward hidden dimension")
     parser.add_argument("--rope_theta", type=float, default=500.0, help="RoPE theta")
     parser.add_argument("--batch_size", type=int, default=128, help="Batch size")
     parser.add_argument(
@@ -133,9 +121,7 @@ def parse_args():
         default=None,
         help="PC inference steps (default: auto)",
     )
-    parser.add_argument(
-        "--eta_infer", type=float, default=0.1, help="PC inference step size"
-    )
+    parser.add_argument("--eta_infer", type=float, default=0.1, help="PC inference step size")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     return parser.parse_args()
@@ -213,9 +199,7 @@ def create_transformer_model(
         edges=edges,
         task_map=TaskMap(x=input_node, y=output_node, causal_mask=mask_node),
         graph_state_initializer=FeedforwardStateInit(),
-        inference=InferenceSGDNormClip(
-            eta_infer=eta_infer, infer_steps=infer_steps, max_norm=5.0, latent_decay=0.0
-        ),
+        inference=InferenceSGDNormClip(eta_infer=eta_infer, infer_steps=infer_steps, max_norm=5.0, latent_decay=0.0),
         scaling=MuPCConfig(include_output=False),
     )
     params = initialize_params(structure, rng_key)
@@ -249,9 +233,7 @@ def generate_text(
         if len(prompt_indices) > seq_len:
             prompt_indices = prompt_indices[-seq_len:]
         elif len(prompt_indices) < seq_len:
-            prompt_indices = [pad_char] * (
-                seq_len - len(prompt_indices)
-            ) + prompt_indices
+            prompt_indices = [pad_char] * (seq_len - len(prompt_indices)) + prompt_indices
         batch_indices.append(prompt_indices)
 
     prompt_tokens = jnp.array(batch_indices)  # (batch_size, seq_len)
@@ -312,10 +294,7 @@ class TrainingProgressBar:
             return
 
         self._bar.update(1)
-        formatted_metrics = {
-            key: f"{value:.2f}" if key == "ppl" else f"{value:.4f}"
-            for key, value in metrics.items()
-        }
+        formatted_metrics = {key: f"{value:.2f}" if key == "ppl" else f"{value:.4f}" for key, value in metrics.items()}
         self._bar.set_postfix(formatted_metrics, refresh=False)
 
     def close(self):
@@ -334,12 +313,8 @@ def main(args=None):
     graph_key, train_key, gen_key = jax.random.split(master_key, 3)
 
     # Data
-    train_loader = CharDataLoader(
-        "train", seq_len=args.seq_len, batch_size=args.batch_size, shuffle=True, seed=0
-    )
-    test_loader = CharDataLoader(
-        "test", seq_len=args.seq_len, batch_size=args.batch_size, shuffle=False
-    )
+    train_loader = CharDataLoader("train", seq_len=args.seq_len, batch_size=args.batch_size, shuffle=True, seed=0)
+    test_loader = CharDataLoader("test", seq_len=args.seq_len, batch_size=args.batch_size, shuffle=False)
 
     # EmbeddingNode takes integer token indices directly.
     vocab_size = train_loader.vocab_size
@@ -360,9 +335,7 @@ def main(args=None):
     train_loader_oh = _IndexLoader(train_loader)
     test_loader_oh = _IndexLoader(test_loader)
 
-    print(
-        f"Vocab: {vocab_size}, Train batches: {len(train_loader)}, Test batches: {len(test_loader)}"
-    )
+    print(f"Vocab: {vocab_size}, Train batches: {len(train_loader)}, Test batches: {len(test_loader)}")
 
     # Model
     structure, params = create_transformer_model(
@@ -497,9 +470,7 @@ def main(args=None):
 
     iter_callback = create_iter_callback(use_pc)
 
-    print(
-        f"\nTraining ({'PC' if use_pc else 'Backprop'}, {args.num_epochs} epochs, lr={args.lr})..."
-    )
+    print(f"\nTraining ({'PC' if use_pc else 'Backprop'}, {args.num_epochs} epochs, lr={args.lr})...")
 
     start_time = time.time()
 
@@ -524,9 +495,7 @@ def main(args=None):
         )
     else:
         jit_train_step = jax.jit(
-            lambda p, o, b, k: train_step_backprop_autoregressive(
-                p, o, b, structure, optimizer, k, use_causal_mask
-            )
+            lambda p, o, b, k: train_step_backprop_autoregressive(p, o, b, structure, optimizer, k, use_causal_mask)
         )
 
     energy_history = []
@@ -536,9 +505,7 @@ def main(args=None):
         for epoch in range(total_epochs):
             num_batches = len(train_loader_oh)
             is_last = epoch == total_epochs - 1
-            max_batches = (
-                round(frac * num_batches) if (is_last and frac > 0) else num_batches
-            )
+            max_batches = round(frac * num_batches) if (is_last and frac > 0) else num_batches
 
             epoch_rng, train_key = jax.random.split(train_key)
             batch_keys = jax.random.split(epoch_rng, max_batches)
@@ -576,8 +543,7 @@ def main(args=None):
                     )
 
                     should_track_state = (
-                        final_state is not None
-                        and batch_idx % tracker.config.tracking_every_n_batches == 0
+                        final_state is not None and batch_idx % tracker.config.tracking_every_n_batches == 0
                     )
                     if should_track_state:
                         track_clamps = {}
@@ -587,9 +553,7 @@ def main(args=None):
                         if use_causal_mask:
                             seq_len = batch["x"].shape[1]
                             cm = create_causal_mask(seq_len)[None, None, :, :]
-                            cm = jnp.broadcast_to(
-                                cm, (batch["x"].shape[0], 1, seq_len, seq_len)
-                            )
+                            cm = jnp.broadcast_to(cm, (batch["x"].shape[0], 1, seq_len, seq_len))
                             track_clamps[structure.task_map["causal_mask"]] = cm
 
                         track_init_state = initialize_graph_state(
@@ -613,24 +577,18 @@ def main(args=None):
 
             energy_history.append(batch_energies)
 
-            eval_results.append(
-                eval_callback(epoch, params, structure, train_config, train_key)
-            )
+            eval_results.append(eval_callback(epoch, params, structure, train_config, train_key))
 
             if batch_energies:
                 avg_loss = sum(batch_energies) / len(batch_energies)
-                tqdm.write(
-                    f"  Train Epoch {epoch + 1}/{total_epochs}, Avg loss: {avg_loss:.4f}"
-                )
+                tqdm.write(f"  Train Epoch {epoch + 1}/{total_epochs}, Avg loss: {avg_loss:.4f}")
     finally:
         progress_bar.close()
 
     trained_params = params
     train_time = time.time() - start_time
 
-    print(
-        f"\nTraining completed in {train_time:.1f}s ({train_time/args.num_epochs:.1f}s per epoch)"
-    )
+    print(f"\nTraining completed in {train_time:.1f}s ({train_time / args.num_epochs:.1f}s per epoch)")
 
     # Generate samples
     prompts = [
@@ -666,9 +624,7 @@ def main(args=None):
     print(f"\nFinal train energy: {energy_history[-1][-1]:.4f}")
     if eval_results and eval_results[-1]:
         final_eval = eval_results[-1]
-        print(
-            f"Test loss: {final_eval['loss']:.4f}, Perplexity: {final_eval['perplexity']:.2f}"
-        )
+        print(f"Test loss: {final_eval['loss']:.4f}, Perplexity: {final_eval['perplexity']:.2f}")
 
     return trained_params, structure, train_loader, test_loader
 

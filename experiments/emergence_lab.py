@@ -26,14 +26,14 @@ Usage:
 
 import argparse
 import json
-import math
 import os
 import random
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from fabricpc_extensions.ansi import C, banner, header, ok, info, warn, err, star, dim, metric, line
+from fabricpc_extensions.ansi import C, banner, line, metric, star
+
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
 import jax
@@ -163,9 +163,7 @@ class MultiAgentWorld:
         if (nx, ny) == self.goal_positions[agent_id]:
             reward = 10.0
             self.grid[self.goal_positions[agent_id]] = EMPTY
-            self.goal_positions[agent_id] = self._random_free(
-                set(self.agent_positions) | set(self.goal_positions)
-            )
+            self.goal_positions[agent_id] = self._random_free(set(self.agent_positions) | set(self.goal_positions))
             self.grid[self.goal_positions[agent_id]] = GOAL
             done = True
 
@@ -199,10 +197,7 @@ def compute_pairwise_metrics(
     min_distance = float(np.min(distances[distances > 0])) if np.any(distances > 0) else 0.0
     avg_error_divergence = error_corr / max(n_pairs, 1)
 
-    collision_count = sum(
-        1 for i in range(n) for j in range(i + 1, n)
-        if distances[i, j] < 1.5
-    )
+    collision_count = sum(1 for i in range(n) for j in range(i + 1, n) if distances[i, j] < 1.5)
 
     return {
         "avg_pairwise_distance": round(avg_distance, 4),
@@ -285,7 +280,8 @@ def run_multi_agent_episode(
             if latent is None:
                 latent = np.zeros(16, dtype=np.float32)
             msg = comms_channel.produce(
-                latent, agents[i].error_history[-1] if agents[i].error_history else 0.0,
+                latent,
+                agents[i].error_history[-1] if agents[i].error_history else 0.0,
                 world.agent_positions[i],
             )
             comms_channel.broadcast(i, msg)
@@ -316,17 +312,18 @@ def run_multi_agent_episode(
             agents[i].behavior.extract_motifs()
 
             retrieval_count = agents[i].memory.retrieval_count
-            agents[i].memory.store(curr_obs[i], {
-                "pos": world.agent_positions[i],
-                "memory_retrievals": retrieval_count,
-                "reward": total_reward,
-                "error": prediction_error,
-            })
+            agents[i].memory.store(
+                curr_obs[i],
+                {
+                    "pos": world.agent_positions[i],
+                    "memory_retrievals": retrieval_count,
+                    "reward": total_reward,
+                    "error": prediction_error,
+                },
+            )
 
             # shared memory: query before storing
-            shared_results = shared_mem.retrieve(
-                curr_obs[i], top_k=3, similarity_threshold=0.6
-            )
+            shared_results = shared_mem.retrieve(curr_obs[i], top_k=3, similarity_threshold=0.6)
             shared_retrievals[i] += len(shared_results)
             for r in shared_results:
                 if r["agent_id"] != i:
@@ -392,7 +389,10 @@ def run_multi_agent_episode(
     all_metrics = []
     for i in range(N_AGENTS):
         metrics = compute_episode_metrics(
-            agents[i], agent_step_errors[i], agent_step_rewards[i], goals_reached[i],
+            agents[i],
+            agent_step_errors[i],
+            agent_step_rewards[i],
+            goals_reached[i],
             grid_cells=GRID_SIZE * GRID_SIZE,
         )
         metrics["episode"] = episode
@@ -401,13 +401,15 @@ def run_multi_agent_episode(
         metrics["cross_agent_hits"] = cross_agent_hits[i]
         all_metrics.append(metrics)
         comms_stats = comms_channel.stats()
-        print(f"  {C.GRAY}Agent {i}:{C.RESET} "
-              f"err={C.CYAN}{metrics['avg_prediction_error']:.4f}{C.RESET} "
-              f"unique={C.PURPLE}{metrics['unique_states_explored']}{C.RESET} "
-              f"reward={C.GREEN}{metrics['total_reward']:.1f}{C.RESET} "
-              f"goals={goals_reached[i]} "
-              f"reads={C.ORANGE}{shared_retrievals[i]}{C.RESET} "
-              f"cross={C.DIM}{cross_agent_hits[i]}{C.RESET}")
+        print(
+            f"  {C.GRAY}Agent {i}:{C.RESET} "
+            f"err={C.CYAN}{metrics['avg_prediction_error']:.4f}{C.RESET} "
+            f"unique={C.PURPLE}{metrics['unique_states_explored']}{C.RESET} "
+            f"reward={C.GREEN}{metrics['total_reward']:.1f}{C.RESET} "
+            f"goals={goals_reached[i]} "
+            f"reads={C.ORANGE}{shared_retrievals[i]}{C.RESET} "
+            f"cross={C.DIM}{cross_agent_hits[i]}{C.RESET}"
+        )
 
     pairwise = compute_pairwise_metrics(agents, world)
     pairwise["episode"] = episode
@@ -427,12 +429,24 @@ def run_multi_agent_episode(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="FabricEmergenceLab — Emergence Lab (Phases 2+3+5)")
-    parser.add_argument("--episodes", type=int, default=int(os.environ.get("N_EPISODES", "3")),
-                        help="Number of episodes (default: 3, env: N_EPISODES)")
-    parser.add_argument("--agents", type=int, default=int(os.environ.get("N_AGENTS", "4")),
-                        help="Number of agents (default: 4, env: N_AGENTS)")
-    parser.add_argument("--grid-size", type=int, default=int(os.environ.get("GRID_SIZE", "24")),
-                        help="Grid world size (default: 24, env: GRID_SIZE)")
+    parser.add_argument(
+        "--episodes",
+        type=int,
+        default=int(os.environ.get("N_EPISODES", "3")),
+        help="Number of episodes (default: 3, env: N_EPISODES)",
+    )
+    parser.add_argument(
+        "--agents",
+        type=int,
+        default=int(os.environ.get("N_AGENTS", "4")),
+        help="Number of agents (default: 4, env: N_AGENTS)",
+    )
+    parser.add_argument(
+        "--grid-size",
+        type=int,
+        default=int(os.environ.get("GRID_SIZE", "24")),
+        help="Grid world size (default: 24, env: GRID_SIZE)",
+    )
     return parser.parse_args()
 
 
@@ -454,16 +468,15 @@ def main():
     print(metric("Episodes", n_episodes))
     print(metric("Steps/ep", N_STEPS))
     print(metric("Total steps", n_episodes * N_STEPS))
-    print(metric("Obs dim", f"{TOTAL_OBS_DIM} (grid {OBS_DIM} + social {SOCIAL_OBS_DIM} + comms {COMMS_OBS_DIM})", C.DIM))
-    print(metric("Explore", f"{EXPLORE_RATE*100:.0f}%"))
+    print(
+        metric("Obs dim", f"{TOTAL_OBS_DIM} (grid {OBS_DIM} + social {SOCIAL_OBS_DIM} + comms {COMMS_OBS_DIM})", C.DIM)
+    )
+    print(metric("Explore", f"{EXPLORE_RATE * 100:.0f}%"))
     print(line())
 
     rng_key = jax.random.PRNGKey(42)
     agent_keys = jax.random.split(rng_key, N_AGENTS + 1)
-    agents = [
-        PCAgent(agent_id=i, rng_key=agent_keys[i], obs_dim=TOTAL_OBS_DIM, hidden_dim=16)
-        for i in range(N_AGENTS)
-    ]
+    agents = [PCAgent(agent_id=i, rng_key=agent_keys[i], obs_dim=TOTAL_OBS_DIM, hidden_dim=16) for i in range(N_AGENTS)]
 
     world = MultiAgentWorld(size=GRID_SIZE, n_agents=N_AGENTS)
     shared_mem = SharedMemory(capacity=5000)
@@ -484,7 +497,9 @@ def main():
 
     try:
         for ep in range(n_episodes):
-            ep_metrics = run_multi_agent_episode(ep, agents, world, shared_mem, comms_channel, step_logs, pairwise_log, event_log, n_episodes)
+            ep_metrics = run_multi_agent_episode(
+                ep, agents, world, shared_mem, comms_channel, step_logs, pairwise_log, event_log, n_episodes
+            )
             all_episode_metrics.extend(ep_metrics)
 
             metric_path = LOG_DIR / "emergence_metrics.jsonl"

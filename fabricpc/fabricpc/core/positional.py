@@ -1,24 +1,20 @@
-import jax
-import jax.numpy as jnp
 from typing import Tuple
+
+import jax.numpy as jnp
 
 
 def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0) -> jnp.ndarray:
     """
     Precompute the frequency tensor for complex exponentials (cis).
     """
-    freqs = 1.0 / (
-        theta ** (jnp.arange(0, dim, 2)[: (dim // 2)].astype(jnp.float32) / dim)
-    )
+    freqs = 1.0 / (theta ** (jnp.arange(0, dim, 2)[: (dim // 2)].astype(jnp.float32) / dim))
     t = jnp.arange(end)
     freqs = jnp.outer(t, freqs)  # (seq_len, dim/2)
     freqs_cis = jnp.exp(1j * freqs)  # (seq_len, dim/2)
     return freqs_cis
 
 
-def apply_rotary_emb(
-    xq: jnp.ndarray, xk: jnp.ndarray, freqs_cis: jnp.ndarray
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def apply_rotary_emb(xq: jnp.ndarray, xk: jnp.ndarray, freqs_cis: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     Apply RoPE to queries and keys.
     Expects xq, xk shape: (batch, seq_len, n_head, head_dim)

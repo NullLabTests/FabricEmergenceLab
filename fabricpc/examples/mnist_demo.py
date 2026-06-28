@@ -22,19 +22,20 @@ from jax_setup import set_jax_flags_before_importing_jax
 
 set_jax_flags_before_importing_jax()  # options: "cpu", "cuda", "tpu"
 
+import time
+
 import jax
-from fabricpc.nodes import Linear, IdentityNode
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
+import optax
 from fabricpc.core.activations import SigmoidActivation, SoftmaxActivation
 from fabricpc.core.energy import CrossEntropyEnergy
 from fabricpc.core.inference import InferenceSGD
 from fabricpc.core.initializers import XavierInitializer
-import optax
-from fabricpc.training import train_pcn, evaluate_pcn
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import IdentityNode, Linear
+from fabricpc.training import evaluate_pcn, train_pcn
 from fabricpc.utils.data.dataloader import MnistLoader
-import time
 
 jax.config.update("jax_default_prng_impl", "threefry2x32")
 
@@ -87,12 +88,8 @@ if __name__ == "__main__":
 
     params = initialize_params(structure, graph_key)
 
-    train_loader = MnistLoader(
-        "train", batch_size=batch_size, tensor_format="flat", shuffle=True, seed=42
-    )
-    test_loader = MnistLoader(
-        "test", batch_size=batch_size, tensor_format="flat", shuffle=False
-    )
+    train_loader = MnistLoader("train", batch_size=batch_size, tensor_format="flat", shuffle=True, seed=42)
+    test_loader = MnistLoader("test", batch_size=batch_size, tensor_format="flat", shuffle=False)
 
     print("\nTraining (JIT compilation on first batch)...")
     start_time = time.time()
@@ -109,9 +106,7 @@ if __name__ == "__main__":
     print(f"Avg training time: {elapsed / train_config['num_epochs']:.2f}s per epoch")
 
     print("\nEvaluating...")
-    metrics = evaluate_pcn(
-        trained_params, structure, test_loader, train_config, eval_key
-    )
+    metrics = evaluate_pcn(trained_params, structure, test_loader, train_config, eval_key)
     print(f"Test Accuracy: {metrics['accuracy'] * 100:.2f}%")
 
     print(

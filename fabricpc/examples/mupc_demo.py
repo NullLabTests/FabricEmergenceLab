@@ -45,20 +45,20 @@ set_jax_flags_before_importing_jax()
 
 import argparse
 import time
+
 import jax
 import optax
-
-from fabricpc.nodes import Linear, IdentityNode, LinearResidual
-from fabricpc.nodes.skip_connection import SkipConnection
-from fabricpc.core.topology import Edge, GraphNamespace
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
-from fabricpc.core.activations import TanhActivation, SoftmaxActivation
+from fabricpc.core.activations import SoftmaxActivation, TanhActivation
 from fabricpc.core.energy import CrossEntropyEnergy
 from fabricpc.core.inference import InferenceSGD
 from fabricpc.core.initializers import MuPCInitializer, XavierInitializer
 from fabricpc.core.mupc import MuPCConfig
-from fabricpc.training import train_pcn, evaluate_pcn
+from fabricpc.core.topology import Edge, GraphNamespace
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import IdentityNode, Linear, LinearResidual
+from fabricpc.nodes.skip_connection import SkipConnection
+from fabricpc.training import evaluate_pcn, train_pcn
 from fabricpc.utils.data.dataloader import MnistLoader
 
 jax.config.update("jax_default_prng_impl", "threefry2x32")
@@ -215,9 +215,7 @@ def build_fc_resnet(num_blocks, hidden_dim, infer_steps=None, *, eta_infer):
     return structure
 
 
-def build_fc_resnet_linear_residual(
-    num_blocks, hidden_dim, infer_steps=None, *, eta_infer
-):
+def build_fc_resnet_linear_residual(num_blocks, hidden_dim, infer_steps=None, *, eta_infer):
     """
     Build an FC-ResNet using LinearResidual nodes (1 PC node per block).
 
@@ -317,10 +315,7 @@ def main():
     params = initialize_params(structure, graph_key)
 
     print(f"\nMode: {mode_label}")
-    print(
-        f"Architecture: input(784) -> stem({args.hidden_dim})"
-        f" -> {args.num_blocks} residual blocks -> output(10)"
-    )
+    print(f"Architecture: input(784) -> stem({args.hidden_dim}) -> {args.num_blocks} residual blocks -> output(10)")
     print(f"Model: {len(structure.nodes)} nodes, {len(structure.edges)} edges")
     # for name, node in structure.nodes.items():
     #     ni = node.node_info
@@ -353,10 +348,7 @@ def main():
     optimizer = optax.adamw(args.lr, weight_decay=args.weight_decay)
     train_config = {"num_epochs": args.num_epochs}
 
-    print(
-        f"\nTraining for {args.num_epochs} epochs "
-        f"(JIT compilation on first batch)..."
-    )
+    print(f"\nTraining for {args.num_epochs} epochs (JIT compilation on first batch)...")
     start_time = time.time()
 
     trained_params, energy_history, _ = train_pcn(
@@ -374,15 +366,13 @@ def main():
 
     # Evaluate
     print("\nEvaluating...")
-    metrics = evaluate_pcn(
-        trained_params, structure, test_loader, train_config, eval_key
-    )
+    metrics = evaluate_pcn(trained_params, structure, test_loader, train_config, eval_key)
     print(f"Test Accuracy: {metrics['accuracy'] * 100:.2f}%")
 
     if metrics["accuracy"] >= 0.85:
         print("PASS: accuracy >= 85%")
     else:
-        print(f"BELOW TARGET: {metrics['accuracy']*100:.1f}% < 90%")
+        print(f"BELOW TARGET: {metrics['accuracy'] * 100:.1f}% < 90%")
 
 
 if __name__ == "__main__":

@@ -38,7 +38,8 @@ Activations are instantiated with their parameters:
 import math
 import types
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict
+
 import jax.numpy as jnp
 from jax import nn
 
@@ -332,9 +333,7 @@ class SoftmaxActivation(ActivationBase):
 
     @staticmethod
     def forward(x: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
-        exp_x = jnp.exp(
-            x - jnp.max(x, axis=-1, keepdims=True)
-        )  # relative to max value for numerical stability
+        exp_x = jnp.exp(x - jnp.max(x, axis=-1, keepdims=True))  # relative to max value for numerical stability
         return exp_x / jnp.sum(exp_x, axis=-1, keepdims=True)
 
     @staticmethod

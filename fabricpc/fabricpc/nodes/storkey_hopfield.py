@@ -69,21 +69,21 @@ Recurrency comes from the Hopfield energy gradient during inference steps.
 
 from __future__ import annotations
 
-from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
-import numpy as np
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
 
-from fabricpc.nodes.base import NodeBase, SlotSpec
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
 from fabricpc.core.activations import TanhActivation
 from fabricpc.core.energy import GaussianEnergy
 from fabricpc.core.initializers import (
-    ZerosInitializer,
     NormalInitializer,
     XavierInitializer,
+    ZerosInitializer,
     initialize,
 )
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
+from fabricpc.nodes.base import NodeBase, SlotSpec
 
 if TYPE_CHECKING:
     from fabricpc.core.activations import ActivationBase
@@ -207,9 +207,7 @@ class StorkeyHopfield(NodeBase):
             raise ValueError(
                 f"Input last dimension {in_shape[-1]} must match node output last dimension {D} for Hopfield recurrence."
             )
-        weights_dict[edge_key] = (
-            W  # Store W under the input edge key for gradient flow to presynaptic node.
-        )
+        weights_dict[edge_key] = W  # Store W under the input edge key for gradient flow to presynaptic node.
 
         # Biases
         biases = {}
@@ -316,9 +314,7 @@ class StorkeyHopfield(NodeBase):
         # Residual (probe) provides the information pathway; W specializes
         # in attractor corrections. At strength=0 this is pure pass-through.
         blend = 1.0 / (1.0 + strength)
-        pre_activation = input_probe_state * blend + (input_probe_state @ W) * (
-            1.0 - blend
-        )
+        pre_activation = input_probe_state * blend + (input_probe_state @ W) * (1.0 - blend)
 
         # Add bias
         if "b" in params.biases and params.biases["b"].size > 0:

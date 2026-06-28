@@ -57,16 +57,16 @@ class CommunicationChannel:
         for simplicity (Phase 5 baseline). Future versions can learn
         the message function.
         """
-        x = np.concatenate([
-            latent,
-            np.array([error], dtype=np.float32),
-            np.array(pos, dtype=np.float32) / 24.0,
-        ])
+        x = np.concatenate(
+            [
+                latent,
+                np.array([error], dtype=np.float32),
+                np.array(pos, dtype=np.float32) / 24.0,
+            ]
+        )
         if not hasattr(self, "_msg_proj"):
             rng = np.random.RandomState(0)
-            self._msg_proj = rng.randn(x.shape[0], self.msg_dim).astype(
-                np.float32
-            ) / np.sqrt(x.shape[0])
+            self._msg_proj = rng.randn(x.shape[0], self.msg_dim).astype(np.float32) / np.sqrt(x.shape[0])
         msg = x @ self._msg_proj
         return np.tanh(msg)
 

@@ -54,22 +54,22 @@ from jax_setup import set_jax_flags_before_importing_jax
 set_jax_flags_before_importing_jax()
 
 import argparse
-import numpy as np
-import jax
-import optax
 
-from fabricpc.nodes import Linear, IdentityNode, StorkeyHopfield
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
+import jax
+import numpy as np
+import optax
 from fabricpc.core import TanhActivation
 from fabricpc.core.activations import SoftmaxActivation
 from fabricpc.core.energy import CrossEntropyEnergy
 from fabricpc.core.inference import InferenceSGD
 from fabricpc.core.initializers import XavierInitializer
-from fabricpc.training import train_pcn, evaluate_pcn
-from fabricpc.experiments import ExperimentArm, ABExperiment
-from fabricpc.experiments.statistics import paired_ttest, cohens_d
+from fabricpc.core.topology import Edge
+from fabricpc.experiments import ABExperiment, ExperimentArm
+from fabricpc.experiments.statistics import cohens_d, paired_ttest
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import IdentityNode, Linear, StorkeyHopfield
+from fabricpc.training import evaluate_pcn, train_pcn
 from fabricpc.utils.data.dataloader import (
     FashionMnistLoader,
     FewShotLoader,
@@ -85,9 +85,7 @@ jax.config.update("jax_default_prng_impl", "threefry2x32")
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Few-Shot + Noise: Storkey Hopfield vs MLP on Fashion-MNIST"
-    )
+    parser = argparse.ArgumentParser(description="Few-Shot + Noise: Storkey Hopfield vs MLP on Fashion-MNIST")
     parser.add_argument(
         "--k_values",
         type=str,
@@ -234,9 +232,7 @@ def make_data_factory(k_per_class, noise_std, batch_size):
 
     def factory(seed):
         train_seed = int(np.random.SeedSequence([seed, 0]).generate_state(1)[0])
-        noise_seed = int(
-            np.random.SeedSequence([seed, 1, noise_level_id]).generate_state(1)[0]
-        )
+        noise_seed = int(np.random.SeedSequence([seed, 1, noise_level_id]).generate_state(1)[0])
 
         train_loader = FewShotLoader(
             dataset_name="fashion_mnist",
@@ -288,9 +284,7 @@ def main():
     optimizer = optax.adamw(0.001, weight_decay=0.1)
     train_config = {"num_epochs": args.num_epochs}
 
-    strength_label = (
-        "learnable" if hopfield_strength is None else f"{hopfield_strength}"
-    )
+    strength_label = "learnable" if hopfield_strength is None else f"{hopfield_strength}"
 
     print("=" * 70)
     print("Few-Shot + Noise Robustness: StorkeyHopfield vs MLP")
@@ -328,9 +322,9 @@ def main():
 
     for k in k_values:
         for noise_std in noise_levels:
-            print(f"\n{'='*70}")
+            print(f"\n{'=' * 70}")
             print(f"  K={k} shots/class, noise_std={noise_std}")
-            print(f"{'='*70}")
+            print(f"{'=' * 70}")
 
             data_factory = make_data_factory(k, noise_std, BATCH_SIZE)
 
@@ -353,17 +347,9 @@ def main():
                 "k": k,
                 "noise": noise_std,
                 "hop_mean": float(np.mean(hop_acc)),
-                "hop_se": (
-                    float(np.std(hop_acc, ddof=1) / np.sqrt(len(hop_acc)))
-                    if len(hop_acc) > 1
-                    else 0.0
-                ),
+                "hop_se": (float(np.std(hop_acc, ddof=1) / np.sqrt(len(hop_acc))) if len(hop_acc) > 1 else 0.0),
                 "mlp_mean": float(np.mean(mlp_acc)),
-                "mlp_se": (
-                    float(np.std(mlp_acc, ddof=1) / np.sqrt(len(mlp_acc)))
-                    if len(mlp_acc) > 1
-                    else 0.0
-                ),
+                "mlp_se": (float(np.std(mlp_acc, ddof=1) / np.sqrt(len(mlp_acc))) if len(mlp_acc) > 1 else 0.0),
                 "delta_mean": float(np.mean(delta)),
             }
 
@@ -381,9 +367,9 @@ def main():
             grid_results.append(row)
 
             print(
-                f"  -> Hopfield: {row['hop_mean']*100:.2f}%  "
-                f"MLP: {row['mlp_mean']*100:.2f}%  "
-                f"Delta: {row['delta_mean']*100:+.2f}%  "
+                f"  -> Hopfield: {row['hop_mean'] * 100:.2f}%  "
+                f"MLP: {row['mlp_mean'] * 100:.2f}%  "
+                f"Delta: {row['delta_mean'] * 100:+.2f}%  "
                 f"p={row['p_value']:.4f}"
             )
 
@@ -404,9 +390,9 @@ def main():
     print(header)
     print("-" * len(header))
     for r in grid_results:
-        hop_str = f"{r['hop_mean']*100:.2f}+/-{r['hop_se']*100:.2f}"
-        mlp_str = f"{r['mlp_mean']*100:.2f}+/-{r['mlp_se']*100:.2f}"
-        delta_str = f"{r['delta_mean']*100:+.2f}"
+        hop_str = f"{r['hop_mean'] * 100:.2f}+/-{r['hop_se'] * 100:.2f}"
+        mlp_str = f"{r['mlp_mean'] * 100:.2f}+/-{r['mlp_se'] * 100:.2f}"
+        delta_str = f"{r['delta_mean'] * 100:+.2f}"
         p_str = f"{r['p_value']:.4f}" if not np.isnan(r["p_value"]) else "n/a"
         sig_str = "*" if r["significant"] else ""
         d_str = f"{r['cohens_d']:.3f}" if not np.isnan(r["cohens_d"]) else "n/a"
@@ -430,9 +416,7 @@ def main():
         for k in k_values:
             row_str = f"{k:>6}"
             for noise_std in noise_levels:
-                match = [
-                    r for r in grid_results if r["k"] == k and r["noise"] == noise_std
-                ]
+                match = [r for r in grid_results if r["k"] == k and r["noise"] == noise_std]
                 if match:
                     d = match[0]["delta_mean"] * 100
                     sig = "*" if match[0]["significant"] else " "

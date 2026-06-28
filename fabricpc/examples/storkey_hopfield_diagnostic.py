@@ -28,30 +28,30 @@ from jax_setup import set_jax_flags_before_importing_jax
 set_jax_flags_before_importing_jax()
 
 import argparse
-import numpy as np
+
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
-
-from fabricpc.nodes import Linear, IdentityNode, StorkeyHopfield
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
 from fabricpc.core.activations import SoftmaxActivation, TanhActivation
-from fabricpc.core.energy import CrossEntropyEnergy, GaussianEnergy
+from fabricpc.core.energy import CrossEntropyEnergy
 from fabricpc.core.inference import InferenceSGD, gather_inputs, run_inference
 from fabricpc.core.initializers import XavierInitializer
-from fabricpc.training import train_pcn, evaluate_pcn
-from fabricpc.training.train import train_step
-from fabricpc.graph_initialization.state_initializer import initialize_graph_state
 from fabricpc.core.state_ops import update_node_in_state
+from fabricpc.core.topology import Edge
+from fabricpc.experiments import ABExperiment, ExperimentArm
+from fabricpc.experiments.statistics import cohens_d, paired_ttest
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.graph_initialization.state_initializer import initialize_graph_state
+from fabricpc.nodes import IdentityNode, Linear, StorkeyHopfield
+from fabricpc.training import evaluate_pcn, train_pcn
+from fabricpc.training.train import train_step
 from fabricpc.utils.data.dataloader import (
     FashionMnistLoader,
     FewShotLoader,
     NoisyTestLoader,
 )
-from fabricpc.experiments import ExperimentArm, ABExperiment
-from fabricpc.experiments.statistics import paired_ttest, cohens_d
 
 jax.config.update("jax_default_prng_impl", "threefry2x32")
 
@@ -215,18 +215,14 @@ def _get_learned_strength(params, structure):
     return None
 
 
-def custom_train_loop(
-    params, structure, train_loader, optimizer, rng_key, max_batches=50
-):
+def custom_train_loop(params, structure, train_loader, optimizer, rng_key, max_batches=50):
     """Minimal training loop returning params after N batches.
 
     Loops over the loader multiple times if needed (important for small
     few-shot loaders that may have fewer batches than max_batches).
     """
     opt_state = optimizer.init(params)
-    jit_train_step = jax.jit(
-        lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k)
-    )
+    jit_train_step = jax.jit(lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k))
     batch_count = 0
     while batch_count < max_batches:
         for batch_data in train_loader:
@@ -234,9 +230,7 @@ def custom_train_loop(
                 break
             batch = {"x": jnp.array(batch_data[0]), "y": jnp.array(batch_data[1])}
             rng_key, subkey = jax.random.split(rng_key)
-            params, opt_state, energy, _ = jit_train_step(
-                params, opt_state, batch, subkey
-            )
+            params, opt_state, energy, _ = jit_train_step(params, opt_state, batch, subkey)
             batch_count += 1
     return params
 
@@ -255,9 +249,7 @@ def custom_train_loop_with_snapshots(
     Loops over the loader multiple times if needed.
     """
     opt_state = optimizer.init(params)
-    jit_train_step = jax.jit(
-        lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k)
-    )
+    jit_train_step = jax.jit(lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k))
     w_snapshots = []
     batch_count = 0
     while batch_count < max_batches:
@@ -266,9 +258,7 @@ def custom_train_loop_with_snapshots(
                 break
             batch = {"x": jnp.array(batch_data[0]), "y": jnp.array(batch_data[1])}
             rng_key, subkey = jax.random.split(rng_key)
-            params, opt_state, energy, _ = jit_train_step(
-                params, opt_state, batch, subkey
-            )
+            params, opt_state, energy, _ = jit_train_step(params, opt_state, batch, subkey)
             if batch_count % snapshot_every == 0:
                 analysis = analyze_W_matrix(params, structure)
                 analysis["batch"] = batch_count
@@ -332,9 +322,9 @@ def phase1_strength_sweep(n_trials, num_epochs):
 
     for s in STRENGTHS:
         label = "learnable" if s is None else f"{s}"
-        print(f"\n{'─'*70}")
+        print(f"\n{'─' * 70}")
         print(f"  hopfield_strength = {label}")
-        print(f"{'─'*70}")
+        print(f"{'─' * 70}")
 
         arm_hop = ExperimentArm(
             name=f"Hop(s={label})",
@@ -363,17 +353,9 @@ def phase1_strength_sweep(n_trials, num_epochs):
             "strength": s,
             "label": label,
             "hop_mean": float(np.mean(hop_acc)),
-            "hop_se": (
-                float(np.std(hop_acc, ddof=1) / np.sqrt(len(hop_acc)))
-                if len(hop_acc) > 1
-                else 0.0
-            ),
+            "hop_se": (float(np.std(hop_acc, ddof=1) / np.sqrt(len(hop_acc))) if len(hop_acc) > 1 else 0.0),
             "mlp_mean": float(np.mean(mlp_acc)),
-            "mlp_se": (
-                float(np.std(mlp_acc, ddof=1) / np.sqrt(len(mlp_acc)))
-                if len(mlp_acc) > 1
-                else 0.0
-            ),
+            "mlp_se": (float(np.std(mlp_acc, ddof=1) / np.sqrt(len(mlp_acc))) if len(mlp_acc) > 1 else 0.0),
             "delta_mean": float(np.mean(delta)),
         }
 
@@ -394,9 +376,7 @@ def phase1_strength_sweep(n_trials, num_epochs):
             key = jax.random.PRNGKey(42)
             params, structure = make_hopfield_factory(None)(key)
             train_loader, _ = data_factory(42)
-            params, _, _ = train_pcn(
-                params, structure, train_loader, optimizer, train_config, key
-            )
+            params, _, _ = train_pcn(params, structure, train_loader, optimizer, train_config, key)
             learned_str = _get_learned_strength(params, structure)
 
         row["learned_str"] = learned_str
@@ -405,9 +385,9 @@ def phase1_strength_sweep(n_trials, num_epochs):
         p_str = f"{row['p_value']:.4f}" if not np.isnan(row["p_value"]) else "n/a"
         sig = "*" if row.get("significant") else ""
         print(
-            f"  -> Hopfield: {row['hop_mean']*100:.2f}%  "
-            f"MLP: {row['mlp_mean']*100:.2f}%  "
-            f"Delta: {row['delta_mean']*100:+.2f}%  "
+            f"  -> Hopfield: {row['hop_mean'] * 100:.2f}%  "
+            f"MLP: {row['mlp_mean'] * 100:.2f}%  "
+            f"Delta: {row['delta_mean'] * 100:+.2f}%  "
             f"p={p_str} {sig}"
         )
 
@@ -425,16 +405,12 @@ def phase1_strength_sweep(n_trials, num_epochs):
     print(header)
     print("─" * len(header))
     for r in sweep_results:
-        hop_str = f"{r['hop_mean']*100:.2f}+/-{r['hop_se']*100:.2f}"
-        mlp_str = f"{r['mlp_mean']*100:.2f}+/-{r['mlp_se']*100:.2f}"
-        delta_str = f"{r['delta_mean']*100:+.2f}"
+        hop_str = f"{r['hop_mean'] * 100:.2f}+/-{r['hop_se'] * 100:.2f}"
+        mlp_str = f"{r['mlp_mean'] * 100:.2f}+/-{r['mlp_se'] * 100:.2f}"
+        delta_str = f"{r['delta_mean'] * 100:+.2f}"
         p_str = f"{r['p_value']:.4f}" if not np.isnan(r["p_value"]) else "n/a"
         sig_str = "*" if r.get("significant") else ""
-        d_str = (
-            f"{r['cohens_d']:.3f}"
-            if not np.isnan(r.get("cohens_d", float("nan")))
-            else "n/a"
-        )
+        d_str = f"{r['cohens_d']:.3f}" if not np.isnan(r.get("cohens_d", float("nan"))) else "n/a"
         learned = f"{r['learned_str']:.3f}" if r["learned_str"] is not None else ""
         print(
             f"{r['label']:<12} {hop_str:>12} {mlp_str:>12} "
@@ -557,39 +533,27 @@ def diagnostic_inference_step(params, state, clamps, structure, config):
     diagnostics = {
         "z_norm": float(jnp.mean(jnp.linalg.norm(hop_state.z_latent, axis=-1))),
         "z_mu_norm": float(jnp.mean(jnp.linalg.norm(hop_state.z_mu, axis=-1))),
-        "E_pc": float(
-            jnp.mean(0.5 * jnp.sum((hop_state.z_latent - hop_state.z_mu) ** 2, axis=-1))
-        ),
+        "E_pc": float(jnp.mean(0.5 * jnp.sum((hop_state.z_latent - hop_state.z_mu) ** 2, axis=-1))),
         "E_hop": float(jnp.mean(strength * E_hop_per_sample)),
         "pc_self_norm": float(jnp.mean(jnp.linalg.norm(pc_self, axis=-1))),
         "hop_self_norm": float(jnp.mean(jnp.linalg.norm(hop_self, axis=-1))),
         "top_down_norm": float(jnp.mean(jnp.linalg.norm(top_down, axis=-1))),
-        "total_grad_norm": float(
-            jnp.mean(jnp.linalg.norm(hop_state.latent_grad, axis=-1))
-        ),
+        "total_grad_norm": float(jnp.mean(jnp.linalg.norm(hop_state.latent_grad, axis=-1))),
         "ratio_hop_over_pc": float(
-            jnp.mean(jnp.linalg.norm(hop_self, axis=-1))
-            / (jnp.mean(jnp.linalg.norm(pc_self, axis=-1)) + 1e-10)
+            jnp.mean(jnp.linalg.norm(hop_self, axis=-1)) / (jnp.mean(jnp.linalg.norm(pc_self, axis=-1)) + 1e-10)
         ),
         "ratio_hop_over_topdown": float(
-            jnp.mean(jnp.linalg.norm(hop_self, axis=-1))
-            / (jnp.mean(jnp.linalg.norm(top_down, axis=-1)) + 1e-10)
+            jnp.mean(jnp.linalg.norm(hop_self, axis=-1)) / (jnp.mean(jnp.linalg.norm(top_down, axis=-1)) + 1e-10)
         ),
-        "tanh_saturation_frac": float(
-            jnp.mean(jnp.abs(hop_state.pre_activation) > 2.0)
-        ),
+        "tanh_saturation_frac": float(jnp.mean(jnp.abs(hop_state.pre_activation) > 2.0)),
         "pre_act_mean_abs": float(jnp.mean(jnp.abs(hop_state.pre_activation))),
-        "hidden_grad_norm": float(
-            jnp.mean(jnp.linalg.norm(hidden_state.latent_grad, axis=-1))
-        ),
+        "hidden_grad_norm": float(jnp.mean(jnp.linalg.norm(hidden_state.latent_grad, axis=-1))),
         "strength_effective": strength,
     }
 
     # Cross-check: recompute hop_self directly
     hop_self_direct = (strength / D) * (wz @ W - wz)
-    diagnostics["hop_self_crosscheck_err"] = float(
-        jnp.max(jnp.abs(hop_self - hop_self_direct))
-    )
+    diagnostics["hop_self_crosscheck_err"] = float(jnp.max(jnp.abs(hop_self - hop_self_direct)))
 
     # Phase 3: Update latents
     state = cls.update_latents(params, state, clamps, structure, config)
@@ -623,9 +587,9 @@ def phase2_inference_dynamics():
         ("Hopfield s=1.0", 1.0),
         ("Hopfield s=0.0 (baseline)", 0.0),
     ]:
-        print(f"\n{'='*110}")
+        print(f"\n{'=' * 110}")
         print(f"  {strength_label}")
-        print(f"{'='*110}")
+        print(f"{'=' * 110}")
 
         rng = jax.random.PRNGKey(42)
         graph_key, train_key, eval_key = jax.random.split(rng, 3)
@@ -692,7 +656,7 @@ def phase2_inference_dynamics():
                 f"{d['top_down_norm']:>9.4f} "
                 f"{d['ratio_hop_over_pc']:>8.2f} "
                 f"{d['ratio_hop_over_topdown']:>8.2f} "
-                f"{d['tanh_saturation_frac']*100:>5.1f}% "
+                f"{d['tanh_saturation_frac'] * 100:>5.1f}% "
                 f"{d['pre_act_mean_abs']:>8.3f} "
                 f"{d['hop_self_crosscheck_err']:>8.2e}"
             )
@@ -761,28 +725,25 @@ def phase3_W_analysis():
         print(
             f"{w['batch']:>6} {w['W_frobenius']:>9.4f} {w['W_operator_norm']:>9.4f} "
             f"{w['max_eigenvalue']:>9.4f} {w['min_eigenvalue']:>9.4f} "
-            f"{w['frac_repelling']*100:>6.1f}% {w['W2_minus_W_frobenius']:>9.4f} "
+            f"{w['frac_repelling'] * 100:>6.1f}% {w['W2_minus_W_frobenius']:>9.4f} "
             f"{w['energy']:>10.2f}"
         )
 
     # Final detailed analysis
     final = analyze_W_matrix(params, structure)
-    print(f"\nFinal W Analysis (after training):")
+    print("\nFinal W Analysis (after training):")
     print(f"  Frobenius norm:        {final['W_frobenius']:.4f}")
     print(f"  Operator norm:         {final['W_operator_norm']:.4f}")
-    print(
-        f"  Eigenvalue range:      [{final['min_eigenvalue']:.4f}, "
-        f"{final['max_eigenvalue']:.4f}]"
-    )
-    print(f"  Fraction in (0,1):     {final['frac_eigs_in_0_1']*100:.1f}%")
-    print(f"  Fraction repelling:    {final['frac_repelling']*100:.1f}%")
+    print(f"  Eigenvalue range:      [{final['min_eigenvalue']:.4f}, {final['max_eigenvalue']:.4f}]")
+    print(f"  Fraction in (0,1):     {final['frac_eigs_in_0_1'] * 100:.1f}%")
+    print(f"  Fraction repelling:    {final['frac_repelling'] * 100:.1f}%")
     print(f"  ||W^2 - W||_F:        {final['W2_minus_W_frobenius']:.4f}")
     print(f"  Mean attractor eig:    {final['mean_attractor_eig']:.6f}")
     print(f"  Max attractor eig:     {final['max_attractor_eig']:.6f}")
 
     # Eigenvalue histogram
     eigs = final["eigenvalues"]
-    print(f"\n  Eigenvalue distribution (128 eigenvalues):")
+    print("\n  Eigenvalue distribution (128 eigenvalues):")
     bins = [
         (-2, -1),
         (-1, -0.5),
@@ -945,10 +906,8 @@ def phase5_latent_analysis():
         print(f"    Participation ratio:   {stats['participation_ratio']:.1f} / 128")
         print(f"    Dims for 95% var:      {stats['dims_for_95pct_var']}")
         print(f"    Mean centroid dist:    {stats['mean_centroid_distance']:.4f}")
-        print(
-            f"    z mean / std:          {stats['z_mean']:.4f} / {stats['z_std']:.4f}"
-        )
-        print(f"    Frac near saturation:  {stats['frac_near_saturation']*100:.1f}%")
+        print(f"    z mean / std:          {stats['z_mean']:.4f} / {stats['z_std']:.4f}")
+        print(f"    Frac near saturation:  {stats['frac_near_saturation'] * 100:.1f}%")
         print(f"    Total variance:        {stats['total_variance']:.4f}")
 
 
@@ -996,15 +955,15 @@ def main():
     if args.phase == "all":
         for key in ["1", "2", "3", "5"]:
             name, fn = phases[key]
-            print(f"\n{'#'*70}")
+            print(f"\n{'#' * 70}")
             print(f"# {name}")
-            print(f"{'#'*70}")
+            print(f"{'#' * 70}")
             fn()
     else:
         name, fn = phases[args.phase]
-        print(f"\n{'#'*70}")
+        print(f"\n{'#' * 70}")
         print(f"# {name}")
-        print(f"{'#'*70}")
+        print(f"{'#' * 70}")
         fn()
 
 

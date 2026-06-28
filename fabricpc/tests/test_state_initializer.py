@@ -6,29 +6,28 @@ Tests distribution-based init, feedforward init, clamp handling,
 and the zero-error invariant of feedforward initialization.
 """
 
-import pytest
 import jax
 import jax.numpy as jnp
-
-from fabricpc.nodes import Linear
-from fabricpc.nodes.transformer import TransformerBlock
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
-from fabricpc.core.inference import InferenceSGD, run_inference
+import pytest
 from fabricpc.core.activations import (
+    GeluActivation,
     IdentityActivation,
     ReLUActivation,
     SoftmaxActivation,
-    GeluActivation,
 )
+from fabricpc.core.inference import InferenceSGD, run_inference
 from fabricpc.core.initializers import NormalInitializer
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import (
+    FeedforwardStateInit,
     GlobalStateInit,
     NodeDistributionStateInit,
-    FeedforwardStateInit,
     initialize_graph_state,
 )
+from fabricpc.nodes import Linear
+from fabricpc.nodes.transformer import TransformerBlock
 
 
 @pytest.fixture
@@ -53,9 +52,7 @@ def simple_graph_structure(rng_key):
 class TestDistributionStateInit:
     """Test suite for GlobalStateInit."""
 
-    def test_distribution_init_graph_level_config(
-        self, simple_graph_structure, rng_key
-    ):
+    def test_distribution_init_graph_level_config(self, simple_graph_structure, rng_key):
         """Test distribution init with graph-level default initializer."""
         structure = simple_graph_structure
         params = initialize_params(structure, rng_key)
@@ -198,16 +195,16 @@ class TestFeedforwardZeroError:
 
         for node_name in structure.nodes:
             error = state.nodes[node_name].error
-            assert jnp.allclose(
-                error, 0.0, atol=1e-6
-            ), f"Node {node_name} has non-zero error after feedforward init: max={jnp.max(jnp.abs(error))}"
+            assert jnp.allclose(error, 0.0, atol=1e-6), (
+                f"Node {node_name} has non-zero error after feedforward init: max={jnp.max(jnp.abs(error))}"
+            )
 
             if node_name not in clamps:
                 z_latent = state.nodes[node_name].z_latent
                 z_mu = state.nodes[node_name].z_mu
-                assert jnp.allclose(
-                    z_latent, z_mu, atol=1e-6
-                ), f"Node {node_name}: z_latent != z_mu after feedforward init"
+                assert jnp.allclose(z_latent, z_mu, atol=1e-6), (
+                    f"Node {node_name}: z_latent != z_mu after feedforward init"
+                )
 
     def test_feedforward_zero_error_transformer(self, rng_key):
         """Test that feedforward init produces zero error for transformer architecture."""
@@ -279,16 +276,16 @@ class TestFeedforwardZeroError:
         for node_name in structure.nodes:
             error = state.nodes[node_name].error
             max_error = jnp.max(jnp.abs(error))
-            assert jnp.allclose(
-                error, 0.0, atol=1e-5
-            ), f"Node {node_name} has non-zero error after feedforward init: max={max_error}"
+            assert jnp.allclose(error, 0.0, atol=1e-5), (
+                f"Node {node_name} has non-zero error after feedforward init: max={max_error}"
+            )
 
             if node_name not in clamps:
                 z_latent = state.nodes[node_name].z_latent
                 z_mu = state.nodes[node_name].z_mu
-                assert jnp.allclose(
-                    z_latent, z_mu, atol=1e-5
-                ), f"Node {node_name}: z_latent != z_mu after feedforward init"
+                assert jnp.allclose(z_latent, z_mu, atol=1e-5), (
+                    f"Node {node_name}: z_latent != z_mu after feedforward init"
+                )
 
     def test_feedforward_no_change_after_inference_without_output_clamp(self, rng_key):
         """
@@ -324,9 +321,7 @@ class TestFeedforwardZeroError:
             params=params,
         )
 
-        original_latents = {
-            name: state.nodes[name].z_latent for name in structure.nodes
-        }
+        original_latents = {name: state.nodes[name].z_latent for name in structure.nodes}
 
         final_state = run_inference(params, state, clamps, structure)
 
@@ -334,6 +329,6 @@ class TestFeedforwardZeroError:
             original = original_latents[node_name]
             final = final_state.nodes[node_name].z_latent
             max_diff = jnp.max(jnp.abs(original - final))
-            assert jnp.allclose(
-                original, final, atol=1e-5
-            ), f"Node {node_name} changed after inference despite zero error: max_diff={max_diff}"
+            assert jnp.allclose(original, final, atol=1e-5), (
+                f"Node {node_name} changed after inference despite zero error: max_diff={max_diff}"
+            )

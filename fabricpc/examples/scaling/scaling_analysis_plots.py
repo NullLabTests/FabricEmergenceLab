@@ -15,14 +15,15 @@ Dependencies:
     To export PNG images, you'll need kaleido installed (pip install kaleido). The HTML output works without any additional dependencies.
 """
 
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.express as px
-from scipy.optimize import curve_fit
 import sys
 import warnings
+
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from scipy.optimize import curve_fit
 
 warnings.filterwarnings("ignore")
 
@@ -53,9 +54,7 @@ def load_and_prepare_data(filepath):
     elif filepath.endswith((".xlsx", ".xls")):
         df = pd.read_excel(filepath)
     else:
-        raise ValueError(
-            f"Unsupported file format: {filepath}. Use .csv, .xlsx, or .xls"
-        )
+        raise ValueError(f"Unsupported file format: {filepath}. Use .csv, .xlsx, or .xls")
     df_clean = df.dropna(subset=["avg_step_time_ms", "memory_mb"])
 
     pc_df = df_clean[df_clean["training_mode"] == "pc"].copy()
@@ -69,9 +68,7 @@ def load_and_prepare_data(filepath):
 
 def get_color_sequence(n):
     """Generate a color sequence similar to viridis."""
-    colors = px.colors.sample_colorscale(
-        "Viridis", [i / (n - 1) if n > 1 else 0.5 for i in range(n)]
-    )
+    colors = px.colors.sample_colorscale("Viridis", [i / (n - 1) if n > 1 else 0.5 for i in range(n)])
     return colors
 
 
@@ -105,9 +102,7 @@ def plot_time_vs_depth_scaling(pc_df, bp_df, widths, colors):
                 col=1,
             )
 
-            a, b, _ = fit_power_law(
-                subset["depth"].values, subset["avg_step_time_ms"].values
-            )
+            a, b, _ = fit_power_law(subset["depth"].values, subset["avg_step_time_ms"].values)
             if not np.isnan(b):
                 x_fit = np.linspace(subset["depth"].min(), subset["depth"].max(), 100)
                 fig.add_trace(
@@ -144,9 +139,7 @@ def plot_time_vs_depth_scaling(pc_df, bp_df, widths, colors):
                 col=2,
             )
 
-            a, b, _ = fit_power_law(
-                subset["depth"].values, subset["avg_step_time_ms"].values
-            )
+            a, b, _ = fit_power_law(subset["depth"].values, subset["avg_step_time_ms"].values)
             if not np.isnan(b):
                 x_fit = np.linspace(subset["depth"].min(), subset["depth"].max(), 100)
                 fig.add_trace(
@@ -183,12 +176,8 @@ def plot_exponent_comparison(pc_df, bp_df, widths):
         pc_sub = pc_df[pc_df["width"] == w].sort_values("depth")
         bp_sub = bp_df[bp_df["width"] == w].sort_values("depth")
         if len(pc_sub) > 2 and len(bp_sub) > 2:
-            _, pc_b, _ = fit_power_law(
-                pc_sub["depth"].values, pc_sub["avg_step_time_ms"].values
-            )
-            _, bp_b, _ = fit_power_law(
-                bp_sub["depth"].values, bp_sub["avg_step_time_ms"].values
-            )
+            _, pc_b, _ = fit_power_law(pc_sub["depth"].values, pc_sub["avg_step_time_ms"].values)
+            _, bp_b, _ = fit_power_law(bp_sub["depth"].values, bp_sub["avg_step_time_ms"].values)
             if not np.isnan(pc_b) and not np.isnan(bp_b):
                 pc_exps.append(pc_b)
                 bp_exps.append(bp_b)
@@ -353,10 +342,7 @@ def plot_memory_ratio_heatmap(pc_df, bp_df, widths, depths):
 
     # Create text annotations
     text_matrix = [
-        [
-            f"{ratio_matrix[i, j]:.2f}" if not np.isnan(ratio_matrix[i, j]) else ""
-            for j in range(len(widths))
-        ]
+        [f"{ratio_matrix[i, j]:.2f}" if not np.isnan(ratio_matrix[i, j]) else "" for j in range(len(widths))]
         for i in range(len(depths))
     ]
 
@@ -393,7 +379,7 @@ def plot_combined_analysis(pc_df, bp_df, widths, depths, colors):
         subplot_titles=(
             "Predictive Coding: Time vs Depth<br>(Linear O(n) scaling observed)",
             "Backpropagation: Time vs Depth<br>(Linear O(n) scaling observed)",
-            f"Depth Scaling Exponent: time ~ depth^α",
+            "Depth Scaling Exponent: time ~ depth^α",
             "Training Time Ratio: PC / Backprop<br>(Higher = PC slower)",
         ),
         specs=[
@@ -423,9 +409,7 @@ def plot_combined_analysis(pc_df, bp_df, widths, depths, colors):
                 col=1,
             )
 
-            a, b, _ = fit_power_law(
-                subset["depth"].values, subset["avg_step_time_ms"].values
-            )
+            a, b, _ = fit_power_law(subset["depth"].values, subset["avg_step_time_ms"].values)
             if not np.isnan(b):
                 x_fit = np.linspace(subset["depth"].min(), subset["depth"].max(), 100)
                 fig.add_trace(
@@ -460,9 +444,7 @@ def plot_combined_analysis(pc_df, bp_df, widths, depths, colors):
                 col=2,
             )
 
-            a, b, _ = fit_power_law(
-                subset["depth"].values, subset["avg_step_time_ms"].values
-            )
+            a, b, _ = fit_power_law(subset["depth"].values, subset["avg_step_time_ms"].values)
             if not np.isnan(b):
                 x_fit = np.linspace(subset["depth"].min(), subset["depth"].max(), 100)
                 fig.add_trace(
@@ -487,12 +469,8 @@ def plot_combined_analysis(pc_df, bp_df, widths, depths, colors):
         pc_sub = pc_df[pc_df["width"] == w].sort_values("depth")
         bp_sub = bp_df[bp_df["width"] == w].sort_values("depth")
         if len(pc_sub) > 2 and len(bp_sub) > 2:
-            _, pc_b, _ = fit_power_law(
-                pc_sub["depth"].values, pc_sub["avg_step_time_ms"].values
-            )
-            _, bp_b, _ = fit_power_law(
-                bp_sub["depth"].values, bp_sub["avg_step_time_ms"].values
-            )
+            _, pc_b, _ = fit_power_law(pc_sub["depth"].values, pc_sub["avg_step_time_ms"].values)
+            _, bp_b, _ = fit_power_law(bp_sub["depth"].values, bp_sub["avg_step_time_ms"].values)
             if not np.isnan(pc_b) and not np.isnan(bp_b):
                 pc_exps.append(pc_b)
                 bp_exps.append(bp_b)
@@ -567,14 +545,10 @@ def plot_combined_analysis(pc_df, bp_df, widths, depths, colors):
 
     # Add reference lines to bar chart
     fig.add_hline(y=1.0, line_dash="dash", line_color="red", opacity=0.7, row=2, col=1)
-    fig.add_hline(
-        y=0.0, line_dash="dash", line_color="green", opacity=0.7, row=2, col=1
-    )
+    fig.add_hline(y=0.0, line_dash="dash", line_color="green", opacity=0.7, row=2, col=1)
 
     # Add reference line to ratio plot
-    fig.add_hline(
-        y=1.0, line_dash="dash", line_color="black", opacity=0.5, row=2, col=2
-    )
+    fig.add_hline(y=1.0, line_dash="dash", line_color="black", opacity=0.5, row=2, col=2)
 
     fig.update_layout(
         height=900,
@@ -674,10 +648,7 @@ def plot_memory_analysis(pc_df, bp_df, widths, depths, colors):
                 ratio_matrix[i, j] = np.nan
 
     text_matrix = [
-        [
-            f"{ratio_matrix[i, j]:.2f}" if not np.isnan(ratio_matrix[i, j]) else ""
-            for j in range(len(widths))
-        ]
+        [f"{ratio_matrix[i, j]:.2f}" if not np.isnan(ratio_matrix[i, j]) else "" for j in range(len(widths))]
         for i in range(len(depths))
     ]
 
@@ -738,12 +709,8 @@ def print_scaling_summary(pc_df, bp_df, widths, depths):
         pc_sub = pc_df[pc_df["width"] == w].sort_values("depth")
         bp_sub = bp_df[bp_df["width"] == w].sort_values("depth")
         if len(pc_sub) > 2 and len(bp_sub) > 2:
-            _, pc_b, pc_r2 = fit_power_law(
-                pc_sub["depth"].values, pc_sub["avg_step_time_ms"].values
-            )
-            _, bp_b, bp_r2 = fit_power_law(
-                bp_sub["depth"].values, bp_sub["avg_step_time_ms"].values
-            )
+            _, pc_b, pc_r2 = fit_power_law(pc_sub["depth"].values, pc_sub["avg_step_time_ms"].values)
+            _, bp_b, bp_r2 = fit_power_law(bp_sub["depth"].values, bp_sub["avg_step_time_ms"].values)
             if not np.isnan(pc_b) and not np.isnan(bp_b):
                 pc_exps.append(pc_b)
                 bp_exps.append(bp_b)
@@ -755,21 +722,15 @@ def print_scaling_summary(pc_df, bp_df, widths, depths):
     )
 
     print("\n--- Interpretation ---")
-    print(
-        f"PC average exponent α: {np.mean(pc_exps):.3f} → O(n^{np.mean(pc_exps):.2f}) ≈ linear"
-    )
-    print(
-        f"BP average exponent α: {np.mean(bp_exps):.3f} → O(n^{np.mean(bp_exps):.2f}) ≈ linear"
-    )
-    print(f"Both show approximately linear scaling with depth (time ~ depth^α, α ≈ 1)")
+    print(f"PC average exponent α: {np.mean(pc_exps):.3f} → O(n^{np.mean(pc_exps):.2f}) ≈ linear")
+    print(f"BP average exponent α: {np.mean(bp_exps):.3f} → O(n^{np.mean(bp_exps):.2f}) ≈ linear")
+    print("Both show approximately linear scaling with depth (time ~ depth^α, α ≈ 1)")
 
     # Time ratios
     print("\n--- PC/BP Time Ratios ---")
     ratios = []
     for _, pc_row in pc_df.iterrows():
-        bp_match = bp_df[
-            (bp_df["width"] == pc_row["width"]) & (bp_df["depth"] == pc_row["depth"])
-        ]
+        bp_match = bp_df[(bp_df["width"] == pc_row["width"]) & (bp_df["depth"] == pc_row["depth"])]
         if len(bp_match) == 1:
             ratio = pc_row["avg_step_time_ms"] / bp_match.iloc[0]["avg_step_time_ms"]
             ratios.append(ratio)
@@ -889,9 +850,9 @@ def analyze_pc_bp_ratios(pc_df, bp_df, widths, depths, batch_size=256, infer_ste
 
     where T = inference steps, D = depth
 
-    Theoretical ratio (2T + 1)D / 3D: {2 * infer_steps + 1}D / 3D = {2 * infer_steps + 1}/3 ≈ {(2 * infer_steps + 1)/3:.1f}x
+    Theoretical ratio (2T + 1)D / 3D: {2 * infer_steps + 1}D / 3D = {2 * infer_steps + 1}/3 ≈ {(2 * infer_steps + 1) / 3:.1f}x
 
-    Observed ratio saturates at ~5-6x (close to theoretical {(2 * infer_steps + 1)/3:.1f}x) because:
+    Observed ratio saturates at ~5-6x (close to theoretical {(2 * infer_steps + 1) / 3:.1f}x) because:
       - Memory bandwidth limits throughput at large widths
       - PC's local per-node autodiff has smaller computation graphs than
         BP's global backward pass

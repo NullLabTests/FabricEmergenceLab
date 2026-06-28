@@ -25,6 +25,7 @@ __all__ = sorted(_imports.keys())
 def __getattr__(name):
     if name in _imports:
         import importlib
+
         module = importlib.import_module(_imports[name])
         return getattr(module, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

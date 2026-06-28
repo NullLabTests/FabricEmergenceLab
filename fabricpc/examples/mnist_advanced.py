@@ -18,22 +18,22 @@ from jax_setup import set_jax_flags_before_importing_jax
 
 set_jax_flags_before_importing_jax()
 
-import os
 import argparse
-import jax
-import jax.numpy as jnp
+import os
 import time
 
-from fabricpc.nodes import Linear
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params, FeedforwardStateInit
+import jax
+import jax.numpy as jnp
+import optax
 from fabricpc.core.activations import IdentityActivation, SigmoidActivation
 from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.initializers import NormalInitializer
 from fabricpc.core.inference import InferenceSGD
-import optax
-from fabricpc.training import train_step, evaluate_pcn
+from fabricpc.core.initializers import NormalInitializer
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import FeedforwardStateInit, initialize_params
+from fabricpc.nodes import Linear
+from fabricpc.training import evaluate_pcn, train_step
 from fabricpc.training.natural_gradients import (
     scale_by_natural_gradient_diag,
     scale_by_natural_gradient_layerwise,
@@ -98,9 +98,7 @@ num_epochs = 10
 OPTIMIZER_PRESETS = {
     "adam": lambda: optax.chain(optax.adam(0.001)),
     "adamw": lambda: optax.adamw(0.001, weight_decay=0.1),
-    "sgd": lambda: optax.chain(
-        optax.add_decayed_weights(0.1), optax.sgd(0.01, momentum=0.9)
-    ),
+    "sgd": lambda: optax.chain(optax.add_decayed_weights(0.1), optax.sgd(0.01, momentum=0.9)),
     "ngd_diag": lambda: optax.chain(
         optax.add_decayed_weights(0.1),
         scale_by_natural_gradient_diag(fisher_decay=0.95, damping=1e-3),
@@ -155,24 +153,15 @@ if __name__ == "__main__":
     params = initialize_params(structure, graph_key)
     num_params = sum(p.size for p in jax.tree_util.tree_leaves(params))
 
-    print(
-        f"\n{len(structure.nodes)} nodes, {len(structure.edges)} edges, "
-        f"{num_params:,} parameters"
-    )
+    print(f"\n{len(structure.nodes)} nodes, {len(structure.edges)} edges, {num_params:,} parameters")
     print(f"Optimizer: {args.optimizer}")
 
-    train_loader = MnistLoader(
-        "train", batch_size=batch_size, tensor_format="flat", shuffle=True, seed=42
-    )
-    test_loader = MnistLoader(
-        "test", batch_size=batch_size, tensor_format="flat", shuffle=False
-    )
+    train_loader = MnistLoader("train", batch_size=batch_size, tensor_format="flat", shuffle=True, seed=42)
+    test_loader = MnistLoader("test", batch_size=batch_size, tensor_format="flat", shuffle=False)
 
     opt_state = optimizer.init(params)
 
-    jit_train_step = jax.jit(
-        lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k)
-    )
+    jit_train_step = jax.jit(lambda p, o, b, k: train_step(p, o, b, structure, optimizer, k))
 
     print(f"\nTraining for {num_epochs} epochs (JIT compilation on first batch)...\n")
 
@@ -190,26 +179,20 @@ if __name__ == "__main__":
         for batch_idx, (x, y) in enumerate(train_loader):
             batch = {"x": jnp.array(x), "y": y}
 
-            params, opt_state, energy, _ = jit_train_step(
-                params, opt_state, batch, all_rng_keys[epoch, batch_idx]
-            )
+            params, opt_state, energy, _ = jit_train_step(params, opt_state, batch, all_rng_keys[epoch, batch_idx])
             epoch_energies.append(float(energy))
 
             if (batch_idx + 1) % 100 == 0:
                 avg_energy = sum(epoch_energies[-100:]) / len(epoch_energies[-100:])
                 print(
-                    f"  Epoch {epoch+1}/{num_epochs}, "
-                    f"Batch {batch_idx+1}/{num_batches}, "
-                    f"energy: {avg_energy:.4f}"
+                    f"  Epoch {epoch + 1}/{num_epochs}, Batch {batch_idx + 1}/{num_batches}, energy: {avg_energy:.4f}"
                 )
 
         epoch_time = time.time() - epoch_start
         avg_energy = sum(epoch_energies) / len(epoch_energies)
 
         epoch_eval_key, eval_key = jax.random.split(eval_key)
-        metrics = evaluate_pcn(
-            params, structure, test_loader, train_config, epoch_eval_key
-        )
+        metrics = evaluate_pcn(params, structure, test_loader, train_config, epoch_eval_key)
         accuracy = metrics["accuracy"] * 100
 
         if accuracy > best_accuracy:
@@ -217,7 +200,7 @@ if __name__ == "__main__":
             best_params = params
 
         print(
-            f"  Epoch {epoch+1}/{num_epochs} - "
+            f"  Epoch {epoch + 1}/{num_epochs} - "
             f"energy: {avg_energy:.4f}, Accuracy: {accuracy:.2f}%, "
             f"Time: {epoch_time:.1f}s"
         )
@@ -240,6 +223,4 @@ if __name__ == "__main__":
     print(f"\n{'Epoch':>5} | {'Energy':>7} | {'Accuracy':>8} | {'Time':>5}")
     print(f"{'-----':>5}-+-{'-------':>7}-+-{'--------':>8}-+-{'-----':>5}")
     for h in training_history:
-        print(
-            f"{h['epoch']:5d} | {h['energy']:7.4f} | {h['accuracy']:7.2f}% | {h['time']:4.1f}s"
-        )
+        print(f"{h['epoch']:5d} | {h['energy']:7.4f} | {h['accuracy']:7.2f}% | {h['time']:4.1f}s")

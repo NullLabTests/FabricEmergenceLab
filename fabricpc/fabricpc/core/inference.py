@@ -18,9 +18,9 @@ Usage:
     )
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any
 import types
+from abc import ABC, abstractmethod
+from typing import Any, Dict
 
 import jax
 import jax.numpy as jnp
@@ -30,6 +30,7 @@ from fabricpc.core.scaling import (
     scale_inputs,
     scale_self_grad,
 )
+from fabricpc.core.state_ops import update_node_in_state
 from fabricpc.core.types import (
     GraphParams,
     GraphState,
@@ -37,7 +38,6 @@ from fabricpc.core.types import (
     NodeInfo,
     NodeState,
 )
-from fabricpc.core.state_ops import update_node_in_state
 
 # =============================================================================
 # Utility Functions
@@ -56,9 +56,7 @@ def gather_inputs(
     for edge_key in node_info.in_edges:
         edge_info = structure.edges[edge_key]  # get the edge object
         node = edge_info.source
-        in_edges_data[edge_key] = state.nodes[
-            node
-        ].z_latent  # get the data sent along this edge
+        in_edges_data[edge_key] = state.nodes[node].z_latent  # get the data sent along this edge
 
     return in_edges_data
 
@@ -181,9 +179,7 @@ class InferenceBase(ABC):
             # successors are preserved unchanged.
             inedge_grads = scale_input_grads(inedge_grads, sc)
             self_grad = scale_self_grad(self_grad, sc)
-            node_state = node_state._replace(
-                latent_grad=node_state.latent_grad + self_grad
-            )
+            node_state = node_state._replace(latent_grad=node_state.latent_grad + self_grad)
 
             # Update the graph state with node state containing errors and energy
             state = state._replace(nodes={**state.nodes, node_name: node_state})
@@ -192,9 +188,7 @@ class InferenceBase(ABC):
             for edge_key, grad in inedge_grads.items():
                 source_name = structure.edges[edge_key].source
                 latent_grad = state.nodes[source_name].latent_grad + grad
-                state = update_node_in_state(
-                    state, source_name, latent_grad=latent_grad
-                )
+                state = update_node_in_state(state, source_name, latent_grad=latent_grad)
 
         return state
 
@@ -261,9 +255,7 @@ class InferenceBase(ABC):
         infer_steps = config["infer_steps"]
 
         def body_fn(t, state):
-            return inference_cls.inference_step(
-                params, state, clamps, structure, config
-            )
+            return inference_cls.inference_step(params, state, clamps, structure, config)
 
         # Use lax.fori_loop for efficiency
         final_state = jax.lax.fori_loop(0, infer_steps, body_fn, initial_state)
@@ -287,9 +279,7 @@ class InferenceSGD(InferenceBase):
     """
 
     def __init__(self, eta_infer=0.1, infer_steps=20, latent_decay=0.0):
-        super().__init__(
-            eta_infer=eta_infer, infer_steps=infer_steps, latent_decay=latent_decay
-        )
+        super().__init__(eta_infer=eta_infer, infer_steps=infer_steps, latent_decay=latent_decay)
 
     @staticmethod
     def compute_new_latent(node_name, node_state, config):
@@ -302,10 +292,7 @@ class InferenceSGD(InferenceBase):
         eta_infer = config["eta_infer"]
         latent_decay = config["latent_decay"]
 
-        new_latent = (
-            node_state.z_latent * (1.0 - eta_infer * latent_decay)
-            - eta_infer * node_state.latent_grad
-        )
+        new_latent = node_state.z_latent * (1.0 - eta_infer * latent_decay) - eta_infer * node_state.latent_grad
         return new_latent
 
 
@@ -324,9 +311,7 @@ class InferenceSGDNormClip(InferenceBase):
         eps: Small constant for numerical stability (default: 1e-8)
     """
 
-    def __init__(
-        self, eta_infer=0.1, infer_steps=20, latent_decay=0.0, max_norm=1.0, eps=1e-8
-    ):
+    def __init__(self, eta_infer=0.1, infer_steps=20, latent_decay=0.0, max_norm=1.0, eps=1e-8):
         super().__init__(
             eta_infer=eta_infer,
             latent_decay=latent_decay,
@@ -344,16 +329,11 @@ class InferenceSGDNormClip(InferenceBase):
 
         grad = node_state.latent_grad
         # Per-sample L2 norm (sum over all non-batch dims)
-        grad_norm = jnp.sqrt(
-            jnp.sum(grad.conj() * grad, axis=tuple(range(1, grad.ndim)), keepdims=True)
-        )
+        grad_norm = jnp.sqrt(jnp.sum(grad.conj() * grad, axis=tuple(range(1, grad.ndim)), keepdims=True))
         clip_factor = jnp.minimum(1.0, max_norm / (grad_norm + eps))
         clipped_grad = grad * clip_factor
 
-        return (
-            node_state.z_latent * (1.0 - eta_infer * latent_decay)
-            - eta_infer * clipped_grad
-        )
+        return node_state.z_latent * (1.0 - eta_infer * latent_decay) - eta_infer * clipped_grad
 
 
 # =============================================================================
@@ -384,6 +364,4 @@ def run_inference(
         Converged graph state after inference.
     """
     inference_object = structure.config["inference"]
-    return type(inference_object).run_inference(
-        params, initial_state, clamps, structure
-    )
+    return type(inference_object).run_inference(params, initial_state, clamps, structure)

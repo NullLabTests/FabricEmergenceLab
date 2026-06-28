@@ -36,16 +36,15 @@ import dataclasses
 
 import jax
 import jax.numpy as jnp
-
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.core.activations import IdentityActivation, TanhActivation
 from fabricpc.core.inference import InferenceSGD
 from fabricpc.core.initializers import NormalInitializer
 from fabricpc.core.mupc import MuPCConfig, MuPCScalingFactors
-from fabricpc.core.types import GraphParams, GraphState
-from fabricpc.graph_initialization import initialize_params
 from fabricpc.core.state_ops import set_latents_to_clamps
+from fabricpc.core.topology import Edge
+from fabricpc.core.types import GraphParams, GraphState
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
 from fabricpc.nodes import Linear
 from fabricpc.nodes.identity import IdentityNode
@@ -86,9 +85,7 @@ def _build_chain(insertion_order, scaling=None):
     w_init = NormalInitializer(std=0.1)
     x = IdentityNode(shape=(6,), name="x")
     h = Linear(shape=(8,), name="h", activation=TanhActivation(), weight_init=w_init)
-    y = Linear(
-        shape=(4,), name="y", activation=IdentityActivation(), weight_init=w_init
-    )
+    y = Linear(shape=(4,), name="y", activation=IdentityActivation(), weight_init=w_init)
     by_name = {"x": x, "h": h, "y": y}
     return graph(
         nodes=[by_name[n] for n in insertion_order],
@@ -108,9 +105,7 @@ def _build_cycle(insertion_order, scaling=None):
     x = IdentityNode(shape=(6,), name="x")
     a = Linear(shape=(8,), name="a", activation=TanhActivation(), weight_init=w_init)
     b = Linear(shape=(8,), name="b", activation=TanhActivation(), weight_init=w_init)
-    y = Linear(
-        shape=(4,), name="y", activation=IdentityActivation(), weight_init=w_init
-    )
+    y = Linear(shape=(4,), name="y", activation=IdentityActivation(), weight_init=w_init)
     by_name = {"x": x, "a": a, "b": b, "y": y}
     return graph(
         nodes=[by_name[n] for n in insertion_order],
@@ -173,20 +168,14 @@ class TestInsertionOrderIndependenceDAG:
     """latent_grad must not depend on user node-list ordering on a DAG."""
 
     def test_chain_with_mupc_topo_vs_reverse(self, rng_key):
-        s_topo = _force_self_grad_scale(
-            _build_chain(["x", "h", "y"], scaling=MuPCConfig())
-        )
-        s_rev = _force_self_grad_scale(
-            _build_chain(["y", "h", "x"], scaling=MuPCConfig())
-        )
+        s_topo = _force_self_grad_scale(_build_chain(["x", "h", "y"], scaling=MuPCConfig()))
+        s_rev = _force_self_grad_scale(_build_chain(["y", "h", "x"], scaling=MuPCConfig()))
 
         params = initialize_params(s_topo, rng_key)
         params_rev = _matching_params(s_rev, params)
 
         clamps = _make_data(rng_key)
-        state_topo = initialize_graph_state(
-            s_topo, batch_size=4, rng_key=rng_key, clamps=clamps, params=params
-        )
+        state_topo = initialize_graph_state(s_topo, batch_size=4, rng_key=rng_key, clamps=clamps, params=params)
         state_topo = set_latents_to_clamps(state_topo, clamps)
         state_rev = _matching_state(s_rev, state_topo)
 
@@ -197,20 +186,14 @@ class TestInsertionOrderIndependenceDAG:
 
     def test_chain_with_mupc_arbitrary_order(self, rng_key):
         """Insertion order [h, y, x] also must not perturb gradients."""
-        s_ref = _force_self_grad_scale(
-            _build_chain(["x", "h", "y"], scaling=MuPCConfig())
-        )
-        s_alt = _force_self_grad_scale(
-            _build_chain(["h", "y", "x"], scaling=MuPCConfig())
-        )
+        s_ref = _force_self_grad_scale(_build_chain(["x", "h", "y"], scaling=MuPCConfig()))
+        s_alt = _force_self_grad_scale(_build_chain(["h", "y", "x"], scaling=MuPCConfig()))
 
         params = initialize_params(s_ref, rng_key)
         params_alt = _matching_params(s_alt, params)
 
         clamps = _make_data(rng_key)
-        state_ref = initialize_graph_state(
-            s_ref, batch_size=4, rng_key=rng_key, clamps=clamps, params=params
-        )
+        state_ref = initialize_graph_state(s_ref, batch_size=4, rng_key=rng_key, clamps=clamps, params=params)
         state_ref = set_latents_to_clamps(state_ref, clamps)
         state_alt = _matching_state(s_alt, state_ref)
 
@@ -229,9 +212,7 @@ class TestInsertionOrderIndependenceDAG:
         params_rev = _matching_params(s_rev, params)
 
         clamps = _make_data(rng_key)
-        state_topo = initialize_graph_state(
-            s_topo, batch_size=4, rng_key=rng_key, clamps=clamps, params=params
-        )
+        state_topo = initialize_graph_state(s_topo, batch_size=4, rng_key=rng_key, clamps=clamps, params=params)
         state_topo = set_latents_to_clamps(state_topo, clamps)
         state_rev = _matching_state(s_rev, state_topo)
 
@@ -246,20 +227,14 @@ class TestInsertionOrderIndependenceCyclic:
     must still hold."""
 
     def test_cycle_with_mupc(self, rng_key):
-        s_fwd = _force_self_grad_scale(
-            _build_cycle(["x", "a", "b", "y"], scaling=MuPCConfig())
-        )
-        s_bwd = _force_self_grad_scale(
-            _build_cycle(["y", "b", "a", "x"], scaling=MuPCConfig())
-        )
+        s_fwd = _force_self_grad_scale(_build_cycle(["x", "a", "b", "y"], scaling=MuPCConfig()))
+        s_bwd = _force_self_grad_scale(_build_cycle(["y", "b", "a", "x"], scaling=MuPCConfig()))
 
         params = initialize_params(s_fwd, rng_key)
         params_bwd = _matching_params(s_bwd, params)
 
         clamps = _make_data(rng_key)
-        state_fwd = initialize_graph_state(
-            s_fwd, batch_size=4, rng_key=rng_key, clamps=clamps, params=params
-        )
+        state_fwd = initialize_graph_state(s_fwd, batch_size=4, rng_key=rng_key, clamps=clamps, params=params)
         state_fwd = set_latents_to_clamps(state_fwd, clamps)
         state_bwd = _matching_state(s_bwd, state_fwd)
 
@@ -276,9 +251,7 @@ class TestInsertionOrderIndependenceCyclic:
         params_bwd = _matching_params(s_bwd, params)
 
         clamps = _make_data(rng_key)
-        state_fwd = initialize_graph_state(
-            s_fwd, batch_size=4, rng_key=rng_key, clamps=clamps, params=params
-        )
+        state_fwd = initialize_graph_state(s_fwd, batch_size=4, rng_key=rng_key, clamps=clamps, params=params)
         state_fwd = set_latents_to_clamps(state_fwd, clamps)
         state_bwd = _matching_state(s_bwd, state_fwd)
 
@@ -302,9 +275,7 @@ class TestSelfGradAccumulation:
         params = initialize_params(s, rng_key)
         clamps = _make_data(rng_key)
 
-        state = initialize_graph_state(
-            s, batch_size=4, rng_key=rng_key, clamps=clamps, params=params
-        )
+        state = initialize_graph_state(s, batch_size=4, rng_key=rng_key, clamps=clamps, params=params)
         state = set_latents_to_clamps(state, clamps)
 
         # Reference run: zero grads, then forward+grad

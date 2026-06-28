@@ -3,22 +3,21 @@
 Test suite for backprop training functions: train_backprop and evaluate_backprop.
 """
 
-import pytest
 import jax
 import jax.numpy as jnp
 import optax
-
-from fabricpc.nodes import Linear
+import pytest
+from fabricpc.core.activations import ReLUActivation, SoftmaxActivation
+from fabricpc.core.inference import InferenceSGD
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
-from fabricpc.core.activations import ReLUActivation, SoftmaxActivation
-from fabricpc.core.inference import InferenceSGD
 from fabricpc.graph_initialization.state_initializer import GlobalStateInit
+from fabricpc.nodes import Linear
 from fabricpc.training.train_backprop import (
-    train_backprop,
-    evaluate_backprop,
     compute_forward_pass,
+    evaluate_backprop,
+    train_backprop,
     validate_feedforward_init,
 )
 
@@ -71,9 +70,7 @@ def make_mock_loader(rng_key, batch_size=8, num_batches=4, input_dim=10, num_cla
     for i in range(num_batches):
         key1, key2, rng_key = jax.random.split(rng_key, 3)
         x = jax.random.normal(key1, (batch_size, input_dim))
-        y = jax.nn.one_hot(
-            jax.random.randint(key2, (batch_size,), 0, num_classes), num_classes
-        )
+        y = jax.nn.one_hot(jax.random.randint(key2, (batch_size,), 0, num_classes), num_classes)
         batches.append({"x": x, "y": y})
     return MockDataLoader(batches)
 
@@ -195,9 +192,7 @@ class TestEvaluateBackprop:
         test_loader = make_mock_loader(rng_key, batch_size=4, num_batches=2)
         config = {"loss_type": "cross_entropy"}
 
-        results = evaluate_backprop(
-            params, structure, test_loader, config, rng_key=None
-        )
+        results = evaluate_backprop(params, structure, test_loader, config, rng_key=None)
         assert "loss" in results
         assert "accuracy" in results
 
@@ -249,9 +244,7 @@ class TestIntegration:
         params = initialize_params(structure, rng_key)
 
         train_loader = make_mock_loader(rng_key, batch_size=16, num_batches=10)
-        test_loader = make_mock_loader(
-            jax.random.PRNGKey(999), batch_size=8, num_batches=3
-        )
+        test_loader = make_mock_loader(jax.random.PRNGKey(999), batch_size=8, num_batches=3)
 
         optimizer = optax.adam(0.01)
         train_config = {
@@ -270,9 +263,7 @@ class TestIntegration:
         )
 
         eval_config = {"loss_type": "cross_entropy"}
-        results = evaluate_backprop(
-            trained_params, structure, test_loader, eval_config, rng_key
-        )
+        results = evaluate_backprop(trained_params, structure, test_loader, eval_config, rng_key)
 
         # Verify pipeline completed successfully
         assert trained_params is not None

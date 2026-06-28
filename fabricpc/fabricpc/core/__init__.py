@@ -1,39 +1,28 @@
 """Core JAX predictive coding components."""
 
 # Type definitions
-from fabricpc.core.types import (
-    GraphParams,
-    GraphState,
-    GraphStructure,
-    NodeInfo,
-    EdgeInfo,
-    SlotInfo,
-    NodeParams,
-    NodeState,
-)
-
 # Activation functions
 from fabricpc.core.activations import (
     ActivationBase,
-    IdentityActivation,
-    SigmoidActivation,
-    TanhActivation,
-    ReLUActivation,
-    LeakyReLUActivation,
     GeluActivation,
-    SoftmaxActivation,
     HardTanhActivation,
+    IdentityActivation,
+    LeakyReLUActivation,
+    ReLUActivation,
+    SigmoidActivation,
+    SoftmaxActivation,
+    TanhActivation,
 )
 
 # Energy functions
 from fabricpc.core.energy import (
-    EnergyFunctional,
-    GaussianEnergy,
     BernoulliEnergy,
     CrossEntropyEnergy,
-    LaplacianEnergy,
+    EnergyFunctional,
+    GaussianEnergy,
     HuberEnergy,
     KLDivergenceEnergy,
+    LaplacianEnergy,
     compute_energy,
     compute_energy_gradient,
     get_energy_and_gradient,
@@ -51,14 +40,24 @@ from fabricpc.core.inference import (
 # Initializers
 from fabricpc.core.initializers import (
     InitializerBase,
-    ZerosInitializer,
-    OnesInitializer,
-    NormalInitializer,
-    UniformInitializer,
-    XavierInitializer,
     KaimingInitializer,
     MuPCInitializer,
+    NormalInitializer,
+    OnesInitializer,
+    UniformInitializer,
+    XavierInitializer,
+    ZerosInitializer,
     initialize,
+)
+from fabricpc.core.types import (
+    EdgeInfo,
+    GraphParams,
+    GraphState,
+    GraphStructure,
+    NodeInfo,
+    NodeParams,
+    NodeState,
+    SlotInfo,
 )
 
 __all__ = [

@@ -17,6 +17,7 @@ def _c(code: str) -> str:
 
 class C:
     """ANSI color constants — use f-strings or + to compose."""
+
     RESET = _c("\033[0m")
     BOLD = _c("\033[1m")
     DIM = _c("\033[2m")

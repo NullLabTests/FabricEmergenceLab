@@ -66,11 +66,7 @@ def analyze(log_path: Path):
     avg_error = sum(all_errors) / len(all_errors) if all_errors else 0.0
     max_error = max(all_errors) if all_errors else 0.0
     min_error = min(all_errors) if all_errors else 0.0
-    var_error = (
-        sum((x - avg_error) ** 2 for x in all_errors) / len(all_errors)
-        if all_errors
-        else 0.0
-    )
+    var_error = sum((x - avg_error) ** 2 for x in all_errors) / len(all_errors) if all_errors else 0.0
     n_unique = len(unique_positions)
     total_steps = len(entries)
     grid_cells = 400  # 20x20
@@ -110,9 +106,7 @@ def analyze(log_path: Path):
             if e.get("goal_reward", 0) > 0:
                 ep_goals += 1
         ep_avg = sum(ep_errors) / len(ep_errors) if ep_errors else 0.0
-        print(
-            f"  {ep_id:4d} {len(ep_entries):6d} {ep_avg:8.4f} {len(ep_unique):7d} {ep_retrievals:6d} {ep_goals:6d}"
-        )
+        print(f"  {ep_id:4d} {len(ep_entries):6d} {ep_avg:8.4f} {len(ep_unique):7d} {ep_retrievals:6d} {ep_goals:6d}")
 
     print()
     print("  Exploration Efficiency:")

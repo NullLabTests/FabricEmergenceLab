@@ -17,6 +17,7 @@ METRIC_LOG = BASE / "logs" / "emergence_metrics.jsonl"
 EVENT_LOG = BASE / "logs" / "emergence_events.jsonl"
 OUTPUT = BASE / "logs" / "last_output.txt"
 
+
 def load_jsonl(path):
     entries = []
     if not path.exists():
@@ -31,10 +32,12 @@ def load_jsonl(path):
                     pass
     return entries
 
+
 def fmt(v):
     if isinstance(v, float):
         return f"{v:.4f}"
     return str(v)
+
 
 def analyze():
     steps = load_jsonl(STEP_LOG)
@@ -93,7 +96,7 @@ def analyze():
         all_positions = set()
         for ep_pos in positions.values():
             all_positions.update(ep_pos)
-        print(f"  Total unique cells visited: {len(all_positions)} / 400 ({len(all_positions)/4:.1f}%)")
+        print(f"  Total unique cells visited: {len(all_positions)} / 400 ({len(all_positions) / 4:.1f}%)")
         for ep in sorted(positions.keys()):
             print(f"  Episode {ep}: {len(positions[ep])} unique cells")
         if len(all_positions) > 0:
@@ -159,8 +162,8 @@ def analyze():
             print(f"  Mean latent norm: {float(np.mean(wm_norms)):.4f}")
             print("  Latent norm trend: ", end="")
             if len(wm_norms) >= 10:
-                first_half = float(np.mean(wm_norms[:len(wm_norms)//2]))
-                second_half = float(np.mean(wm_norms[len(wm_norms)//2:]))
+                first_half = float(np.mean(wm_norms[: len(wm_norms) // 2]))
+                second_half = float(np.mean(wm_norms[len(wm_norms) // 2 :]))
                 ratio = second_half / max(first_half, 1e-8)
                 if ratio > 1.1:
                     print(f"increasing ({ratio:.2f}x) — representation expanding")
@@ -185,7 +188,9 @@ def analyze():
         first_err = metrics[0].get("avg_prediction_error", 0)
         last_err = metrics[-1].get("avg_prediction_error", 0)
         if last_err < first_err * 0.5:
-            findings.append("1. LEARNING CONFIRMED: Prediction error dropped >50% across episodes — the PC network is successfully learning to predict observations.")
+            findings.append(
+                "1. LEARNING CONFIRMED: Prediction error dropped >50% across episodes — the PC network is successfully learning to predict observations."
+            )
 
     # Finding 2: Exploration
     all_pos_set = set()
@@ -194,23 +199,35 @@ def analyze():
         if p:
             all_pos_set.add(tuple(p))
     if len(all_pos_set) > 20:
-        findings.append(f"2. EXPLORATION: Agent visited {len(all_pos_set)}/400 cells ({len(all_pos_set)/4:.1f}%) — {'sustained exploration' if len(all_pos_set) > 40 else 'limited coverage, tendency to loop'}.")
+        findings.append(
+            f"2. EXPLORATION: Agent visited {len(all_pos_set)}/400 cells ({len(all_pos_set) / 4:.1f}%) — {'sustained exploration' if len(all_pos_set) > 40 else 'limited coverage, tendency to loop'}."
+        )
     else:
-        findings.append(f"2. LOOPING BEHAVIOR: Agent visited only {len(all_pos_set)} cells — strong repetitive loop tendency.")
+        findings.append(
+            f"2. LOOPING BEHAVIOR: Agent visited only {len(all_pos_set)} cells — strong repetitive loop tendency."
+        )
 
     # Finding 3: Emergence
     if events:
         unique_types = set(e.get("event_type", "") for e in events)
         if "repetitive_loop_detected" in unique_types:
-            findings.append("3. REPETITIVE LOOPS: dominant emergence event type — agent develops stereotyped movement patterns.")
+            findings.append(
+                "3. REPETITIVE LOOPS: dominant emergence event type — agent develops stereotyped movement patterns."
+            )
         if "behavioral_motif_established" in unique_types:
-            findings.append("4. BEHAVIORAL MOTIFS: agent forms repeated action sequences — basic proto-behavioral routines detected.")
+            findings.append(
+                "4. BEHAVIORAL MOTIFS: agent forms repeated action sequences — basic proto-behavioral routines detected."
+            )
         if "sustained_exploration" in unique_types:
-            findings.append("5. SUSTAINED EXPLORATION: agent shows periods of active exploration between looping episodes.")
+            findings.append(
+                "5. SUSTAINED EXPLORATION: agent shows periods of active exploration between looping episodes."
+            )
 
     # Finding 4: Memory
     if total_retrievals > 1000:
-        findings.append(f"6. MEMORY USAGE: {total_retrievals} retrievals — associative memory is being actively queried.")
+        findings.append(
+            f"6. MEMORY USAGE: {total_retrievals} retrievals — associative memory is being actively queried."
+        )
 
     for f in findings:
         print(f"  {f}")
@@ -232,6 +249,7 @@ def analyze():
     print("=" * 70)
     print(f"  Report generated from {len(steps)} steps, {len(metrics)} episodes, {len(events)} events")
     print("=" * 70)
+
 
 if __name__ == "__main__":
     analyze()

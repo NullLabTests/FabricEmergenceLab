@@ -1,15 +1,13 @@
 from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
-from fabricpc.nodes.linear import Linear
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
-from fabricpc.core.activations import IdentityActivation
-from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.initializers import NormalInitializer
+
+from fabricpc.core.activations import ActivationBase, IdentityActivation
+from fabricpc.core.energy import EnergyFunctional, GaussianEnergy
+from fabricpc.core.initializers import InitializerBase, NormalInitializer
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
 from fabricpc.nodes.base import FlattenInputMixin
-from fabricpc.core.activations import ActivationBase
-from fabricpc.core.energy import EnergyFunctional
-from fabricpc.core.initializers import InitializerBase
+from fabricpc.nodes.linear import Linear
 
 
 class LinearExplicitGrad(Linear):
@@ -67,9 +65,7 @@ class LinearExplicitGrad(Linear):
 
         # Explicit self-latent gradient
         energy_obj = node_info.energy
-        self_grad = type(energy_obj).grad_latent(
-            state.z_latent, state.z_mu, energy_obj.config
-        )
+        self_grad = type(energy_obj).grad_latent(state.z_latent, state.z_mu, energy_obj.config)
 
         # Gain-modulated error for input gradients
         gain_mod_error = node_class.compute_gain_mod_error(state, node_info)
@@ -83,24 +79,16 @@ class LinearExplicitGrad(Linear):
 
             if energy_type == "GaussianEnergy":
                 if flatten_input:
-                    gain_mod_error_flat = FlattenInputMixin.flatten_input(
-                        gain_mod_error
-                    )
-                    grad_flat = -jnp.matmul(
-                        gain_mod_error_flat, params.weights[edge_key].T
-                    )
-                    grad_contribution = FlattenInputMixin.reshape_output(
-                        grad_flat, source_shape
-                    )
+                    gain_mod_error_flat = FlattenInputMixin.flatten_input(gain_mod_error)
+                    grad_flat = -jnp.matmul(gain_mod_error_flat, params.weights[edge_key].T)
+                    grad_contribution = FlattenInputMixin.reshape_output(grad_flat, source_shape)
                 else:
                     grad_contribution = -jnp.matmul(
                         gain_mod_error,
                         params.weights[edge_key].T,
                     )
             else:
-                raise NotImplementedError(
-                    f"energy functional '{energy_type}' not implemented in LinearExplicitGrad."
-                )
+                raise NotImplementedError(f"energy functional '{energy_type}' not implemented in LinearExplicitGrad.")
 
             input_grads[edge_key] = grad_contribution
 

@@ -30,18 +30,18 @@ from jax_setup import set_jax_flags_before_importing_jax
 set_jax_flags_before_importing_jax(jax_platforms="cpu")
 
 import argparse
-import numpy as np
+
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
-
-from fabricpc.nodes import IdentityNode, StorkeyHopfield
+from fabricpc.core.inference import InferenceSGD, run_inference
+from fabricpc.core.initializers import NormalInitializer
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
-from fabricpc.core.inference import InferenceSGD, run_inference
-from fabricpc.core.initializers import NormalInitializer
+from fabricpc.nodes import IdentityNode, StorkeyHopfield
 from fabricpc.training import train_pcn
 
 jax.config.update("jax_default_prng_impl", "threefry2x32")
@@ -105,9 +105,7 @@ class HopfieldRecallLoader:
         self._num_batches = self.num_samples // batch_size
 
     def __iter__(self):
-        rng = np.random.default_rng(
-            self.seed + self._epoch if self.seed is not None else None
-        )
+        rng = np.random.default_rng(self.seed + self._epoch if self.seed is not None else None)
         self._epoch += 1
 
         P, D = self.patterns.shape
@@ -307,9 +305,9 @@ def evaluate_recall(
         )
 
         print(
-            f"  noise={noise_prob:.2f}  exact={exact_recalls/total_samples*100:5.1f}%  "
-            f"cosine={total_cosine/total_samples:.4f}  "
-            f"bit_acc={total_bit_acc/total_samples*100:5.1f}%"
+            f"  noise={noise_prob:.2f}  exact={exact_recalls / total_samples * 100:5.1f}%  "
+            f"cosine={total_cosine / total_samples:.4f}  "
+            f"bit_acc={total_bit_acc / total_samples * 100:5.1f}%"
         )
 
     return results
@@ -330,8 +328,8 @@ def generate_mnist_prototypes(num_digits=10, downsample_to=14):
 
     Returns (num_digits, downsample_to^2) array with values in {-1, +1}.
     """
-    import tensorflow_datasets as tfds
     import tensorflow as tf
+    import tensorflow_datasets as tfds
 
     tf.config.set_visible_devices([], "GPU")
 
@@ -371,8 +369,8 @@ def print_results_table(title, D, num_patterns, results):
     print(f"{'-' * 70}")
     for r in results:
         print(
-            f"{r['noise']:>8.2f} {r['exact_recall']*100:>13.1f}% "
-            f"{r['cosine_sim']:>12.4f} {r['bit_accuracy']*100:>13.1f}%"
+            f"{r['noise']:>8.2f} {r['exact_recall'] * 100:>13.1f}% "
+            f"{r['cosine_sim']:>12.4f} {r['bit_accuracy'] * 100:>13.1f}%"
         )
     print(f"{'-' * 70}")
 
@@ -424,9 +422,7 @@ def run_binary_experiment(rng_key):
         rng_key=eval_key,
     )
 
-    print_results_table(
-        "Experiment A: Random Binary Patterns", D, num_patterns, results
-    )
+    print_results_table("Experiment A: Random Binary Patterns", D, num_patterns, results)
     return results
 
 
@@ -447,7 +443,7 @@ def run_mnist_experiment(rng_key):
     print(f"Generated {num_patterns} binarized prototypes, D={D}")
     for i in range(num_patterns):
         frac_pos = np.mean(patterns[i] == 1.0)
-        print(f"  digit {i}: {frac_pos*100:.0f}% +1, {(1-frac_pos)*100:.0f}% -1")
+        print(f"  digit {i}: {frac_pos * 100:.0f}% +1, {(1 - frac_pos) * 100:.0f}% -1")
 
     print("\nTraining...")
     rng_key, train_key = jax.random.split(rng_key)
@@ -477,9 +473,7 @@ def run_mnist_experiment(rng_key):
         rng_key=eval_key,
     )
 
-    print_results_table(
-        "Experiment B: MNIST Digit Prototypes (14x14)", D, num_patterns, results
-    )
+    print_results_table("Experiment B: MNIST Digit Prototypes (14x14)", D, num_patterns, results)
     return results
 
 

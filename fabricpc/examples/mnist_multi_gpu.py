@@ -15,13 +15,10 @@ from jax_setup import set_jax_flags_before_importing_jax
 
 set_jax_flags_before_importing_jax()
 
-import jax
 import time
 
-from fabricpc.nodes import Linear
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
+import jax
+import optax
 from fabricpc.core.activations import (
     IdentityActivation,
     SigmoidActivation,
@@ -29,8 +26,11 @@ from fabricpc.core.activations import (
 )
 from fabricpc.core.energy import CrossEntropyEnergy
 from fabricpc.core.inference import InferenceSGD
-import optax
-from fabricpc.training import train_pcn, evaluate_pcn
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import Linear
+from fabricpc.training import evaluate_pcn, train_pcn
 from fabricpc.utils.data.dataloader import MnistLoader
 
 # --- Network ---
@@ -79,20 +79,14 @@ print(f"Devices: {n_devices} ({[d.device_kind for d in jax.devices()]})")
 
 params = initialize_params(structure, graph_key)
 num_params = sum(p.size for p in jax.tree_util.tree_leaves(params))
-print(
-    f"{len(structure.nodes)} nodes, {len(structure.edges)} edges, {num_params:,} parameters"
-)
+print(f"{len(structure.nodes)} nodes, {len(structure.edges)} edges, {num_params:,} parameters")
 
 # Batch size scales with device count
 batch_size = 200 * n_devices
 print(f"Batch size: {batch_size} ({batch_size // n_devices} per device)")
 
-train_loader = MnistLoader(
-    "train", batch_size=batch_size, tensor_format="flat", shuffle=True, seed=42
-)
-test_loader = MnistLoader(
-    "test", batch_size=batch_size, tensor_format="flat", shuffle=False
-)
+train_loader = MnistLoader("train", batch_size=batch_size, tensor_format="flat", shuffle=True, seed=42)
+test_loader = MnistLoader("test", batch_size=batch_size, tensor_format="flat", shuffle=False)
 
 print(f"\nTraining on {n_devices} device(s) (pmap compilation on first batch)...\n")
 

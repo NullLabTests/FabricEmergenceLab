@@ -35,22 +35,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 def main():
     parser = argparse.ArgumentParser(description="LLM-assisted interpretation of emergence experiments")
-    parser.add_argument("--log-dir", type=str, default=None,
-                        help="Directory containing experiment logs")
-    parser.add_argument("--step-log", type=str, default=None,
-                        help="Path to step JSONL log")
-    parser.add_argument("--metrics-log", type=str, default=None,
-                        help="Path to metrics JSONL log")
-    parser.add_argument("--events-log", type=str, default=None,
-                        help="Path to events JSONL log")
-    parser.add_argument("--output", type=str, default=None,
-                        help="Write interpretation to file")
-    parser.add_argument("--model", type=str, default=None,
-                        help="LLM model name (default: gpt-4o)")
-    parser.add_argument("--api-base", type=str, default="https://api.openai.com/v1",
-                        help="API base URL")
-    parser.add_argument("--summary-only", action="store_true",
-                        help="Only print the experiment summary, skip LLM call")
+    parser.add_argument("--log-dir", type=str, default=None, help="Directory containing experiment logs")
+    parser.add_argument("--step-log", type=str, default=None, help="Path to step JSONL log")
+    parser.add_argument("--metrics-log", type=str, default=None, help="Path to metrics JSONL log")
+    parser.add_argument("--events-log", type=str, default=None, help="Path to events JSONL log")
+    parser.add_argument("--output", type=str, default=None, help="Write interpretation to file")
+    parser.add_argument("--model", type=str, default=None, help="LLM model name (default: gpt-4o)")
+    parser.add_argument("--api-base", type=str, default="https://api.openai.com/v1", help="API base URL")
+    parser.add_argument("--summary-only", action="store_true", help="Only print the experiment summary, skip LLM call")
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir) if args.log_dir else BASE_DIR / "logs"

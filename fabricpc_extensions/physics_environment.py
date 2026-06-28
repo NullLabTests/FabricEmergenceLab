@@ -28,6 +28,7 @@ import numpy as np
 
 try:
     import pymunk
+
     HAS_PYMUNK = True
 except ImportError:
     HAS_PYMUNK = False
@@ -64,10 +65,7 @@ class PhysicsEnvironment:
         seed: Optional[int] = None,
     ):
         if not HAS_PYMUNK:
-            raise ImportError(
-                "pymunk is required for PhysicsEnvironment. "
-                "Install with: pip install pymunk"
-            )
+            raise ImportError("pymunk is required for PhysicsEnvironment. Install with: pip install pymunk")
 
         self.width = width
         self.height = height
@@ -110,9 +108,9 @@ class PhysicsEnvironment:
         hh2 = hh + WALL_THICKNESS / 2
         segments = [
             ((-hw2, -hh2), (hw2, -hh2)),  # bottom
-            ((-hw2, hh2), (hw2, hh2)),   # top
+            ((-hw2, hh2), (hw2, hh2)),  # top
             ((-hw2, -hh2), (-hw2, hh2)),  # left
-            ((hw2, -hh2), (hw2, hh2)),   # right
+            ((hw2, -hh2), (hw2, hh2)),  # right
         ]
         for a, b in segments:
             seg = pymunk.Segment(self.space.static_body, a, b, WALL_THICKNESS)
@@ -136,12 +134,14 @@ class PhysicsEnvironment:
             shape.collision_type = 1
             shape.filter = pymunk.ShapeFilter(categories=0b0001)
             self.space.add(body, shape)
-            self.agents.append({
-                "body": body,
-                "shape": shape,
-                "agent_id": i,
-                "force": (0.0, 0.0),
-            })
+            self.agents.append(
+                {
+                    "body": body,
+                    "shape": shape,
+                    "agent_id": i,
+                    "force": (0.0, 0.0),
+                }
+            )
 
     def _build_objects(self):
         for i in range(self.n_objects):
@@ -158,12 +158,14 @@ class PhysicsEnvironment:
             shape.collision_type = 2
             shape.filter = pymunk.ShapeFilter(categories=0b0010)
             self.space.add(body, shape)
-            self.objects.append({
-                "body": body,
-                "shape": shape,
-                "object_id": i,
-                "mass": mass,
-            })
+            self.objects.append(
+                {
+                    "body": body,
+                    "shape": shape,
+                    "object_id": i,
+                    "mass": mass,
+                }
+            )
 
     def _build_goals(self):
         placed = set()
@@ -175,11 +177,13 @@ class PhysicsEnvironment:
                 if pos not in placed:
                     placed.add(pos)
                     break
-            self.goals.append({
-                "position": np.array([x, y], dtype=np.float32),
-                "radius": GOAL_RADIUS,
-                "collected": False,
-            })
+            self.goals.append(
+                {
+                    "position": np.array([x, y], dtype=np.float32),
+                    "radius": GOAL_RADIUS,
+                    "collected": False,
+                }
+            )
 
     def _get_observation(self) -> np.ndarray:
         """
@@ -195,12 +199,18 @@ class PhysicsEnvironment:
         for a in self.agents:
             b = a["body"]
             angle = b.angle
-            parts.extend([
-                b.position.x, b.position.y,
-                b.velocity.x, b.velocity.y,
-                math.cos(angle), math.sin(angle),
-                a["force"][0], a["force"][1],
-            ])
+            parts.extend(
+                [
+                    b.position.x,
+                    b.position.y,
+                    b.velocity.x,
+                    b.velocity.y,
+                    math.cos(angle),
+                    math.sin(angle),
+                    a["force"][0],
+                    a["force"][1],
+                ]
+            )
         for o in self.objects:
             b = o["body"]
             parts.extend([b.position.x, b.position.y, b.velocity.x, b.velocity.y])
@@ -219,7 +229,7 @@ class PhysicsEnvironment:
         Forces are clipped to ±200 and divided by 200.
         cos/sin are already [-1, 1].
         """
-        diag = math.sqrt(self.width ** 2 + self.height ** 2)
+        diag = math.sqrt(self.width**2 + self.height**2)
         n_agents = len(self.agents)
         n_objects = len(self.objects)
         n_goals = len(self.goals)
@@ -230,8 +240,8 @@ class PhysicsEnvironment:
         idx = 0
         # normalize agent observations
         for _ in range(n_agents):
-            obs[idx] /= diag       # x / diagonal
-            obs[idx + 1] /= diag   # y / diagonal
+            obs[idx] /= diag  # x / diagonal
+            obs[idx + 1] /= diag  # y / diagonal
             obs[idx + 2] = np.clip(obs[idx + 2] / 200.0, -1.0, 1.0)  # vx
             obs[idx + 3] = np.clip(obs[idx + 3] / 200.0, -1.0, 1.0)  # vy
             # idx+4, idx+5 = cos(angle), sin(angle) — already [-1, 1]
@@ -304,12 +314,8 @@ class PhysicsEnvironment:
             "timestep": self._timestep,
             "n_objects": len(self.objects),
             "n_goals": len(self.goals),
-            "agent_positions": [
-                (a["body"].position.x, a["body"].position.y) for a in self.agents
-            ],
-            "agent_velocities": [
-                (a["body"].velocity.x, a["body"].velocity.y) for a in self.agents
-            ],
+            "agent_positions": [(a["body"].position.x, a["body"].position.y) for a in self.agents],
+            "agent_velocities": [(a["body"].velocity.x, a["body"].velocity.y) for a in self.agents],
         }
 
         return obs, rewards, done, info

@@ -49,9 +49,7 @@ class WorldModel:
         # Transition predictor: input = [latent, one-hot action], output = next latent
         self.transition_lr = 0.01
         self._rng_trans = np.random.RandomState(1)
-        self.transition_W: np.ndarray = self._rng_trans.randn(
-            latent_dim + 4, latent_dim
-        ).astype(np.float32) * 0.01
+        self.transition_W: np.ndarray = self._rng_trans.randn(latent_dim + 4, latent_dim).astype(np.float32) * 0.01
         self.transition_b: np.ndarray = np.zeros(latent_dim, dtype=np.float32)
         self.transition_loss_history: List[float] = []
         self._prev_latent: Optional[np.ndarray] = None
@@ -70,9 +68,9 @@ class WorldModel:
         if self.latent_mean is None:
             self.latent_mean = np.zeros(self.latent_dim, dtype=np.float32)
             self.latent_m2 = np.zeros(self.latent_dim, dtype=np.float32)
-            self._projection = self._rng.randn(obs.shape[0], self.latent_dim).astype(
-                np.float32
-            ) / np.sqrt(self.latent_dim)
+            self._projection = self._rng.randn(obs.shape[0], self.latent_dim).astype(np.float32) / np.sqrt(
+                self.latent_dim
+            )
         return obs @ self._projection
 
     def _action_embed(self, action: int) -> np.ndarray:
@@ -85,14 +83,12 @@ class WorldModel:
         x = np.concatenate([latent, action_emb])
         return x @ self.transition_W + self.transition_b
 
-    def _train_transition(
-        self, latent: np.ndarray, action: int, target_latent: np.ndarray
-    ) -> float:
+    def _train_transition(self, latent: np.ndarray, action: int, target_latent: np.ndarray) -> float:
         action_emb = self._action_embed(action)
         x = np.concatenate([latent, action_emb])
         predicted = x @ self.transition_W + self.transition_b
         error = predicted - target_latent
-        loss = float(np.mean(error ** 2))
+        loss = float(np.mean(error**2))
 
         grad = 2 * error
         self.transition_W -= self.transition_lr * np.outer(x, grad)
@@ -121,19 +117,13 @@ class WorldModel:
         std = np.sqrt(np.maximum(variance, 1e-10))
 
         latent_norm = float(np.linalg.norm(latent))
-        mean_shift = (
-            float(np.linalg.norm(self.latent_mean - prev_mean))
-            if prev_mean is not None
-            else 0.0
-        )
+        mean_shift = float(np.linalg.norm(self.latent_mean - prev_mean)) if prev_mean is not None else 0.0
         novelty = float(np.mean(std))
 
         # Transition learning
         transition_loss = 0.0
         if self._prev_latent is not None and self._prev_action is not None:
-            transition_loss = self._train_transition(
-                self._prev_latent, self._prev_action, latent
-            )
+            transition_loss = self._train_transition(self._prev_latent, self._prev_action, latent)
             self.transition_loss_history.append(transition_loss)
         self._prev_latent = latent.copy()
         self._prev_action = action
@@ -194,4 +184,3 @@ class WorldModel:
             return 0.0
         recent = self.transition_loss_history[-window:]
         return float(np.mean(recent))
-

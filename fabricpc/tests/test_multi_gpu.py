@@ -7,21 +7,21 @@ train_pcn(..., pmap_single_device=True), plus utility function correctness.
 """
 
 import copy
-import pytest
+
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-
-from fabricpc.nodes import Linear
+import pytest
+from fabricpc.core.activations import IdentityActivation, ReLUActivation
+from fabricpc.core.inference import InferenceSGD
+from fabricpc.core.initializers import XavierInitializer
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
-from fabricpc.core.activations import IdentityActivation, ReLUActivation
-from fabricpc.core.initializers import XavierInitializer
-from fabricpc.core.inference import InferenceSGD
-from fabricpc.training import train_pcn, evaluate_pcn
-from fabricpc.training.train import shard_batch, replicate_params, unshard_energies
+from fabricpc.nodes import Linear
+from fabricpc.training import evaluate_pcn, train_pcn
+from fabricpc.training.train import replicate_params, shard_batch, unshard_energies
 
 
 @pytest.fixture
@@ -102,9 +102,7 @@ class SimpleDataLoader:
         for _ in range(self.num_batches):
             rng_key, x_key, y_key = jax.random.split(rng_key, 3)
             x = jax.random.normal(x_key, (self.batch_size, *self.input_shape))
-            y = jnp.tanh(x) + jax.random.normal(
-                y_key, (self.batch_size, *self.output_shape)
-            )
+            y = jnp.tanh(x) + jax.random.normal(y_key, (self.batch_size, *self.output_shape))
             batches.append({"x": x, "y": y})
         return batches
 
@@ -118,13 +116,9 @@ class SimpleDataLoader:
 class TestMultiGPUTraining:
     """Test suite for multi-GPU training numerical similarity."""
 
-    def test_both_methods_reduce_energy(
-        self, simple_structure, optimizer, train_config, rng_key
-    ):
+    def test_both_methods_reduce_energy(self, simple_structure, optimizer, train_config, rng_key):
         """Test that both training methods reduce energy over training."""
-        model_key, train_key1, train_key2, data_key, eval_key = jax.random.split(
-            rng_key, 5
-        )
+        model_key, train_key1, train_key2, data_key, eval_key = jax.random.split(rng_key, 5)
 
         # Initialize parameters
         params = initialize_params(simple_structure, model_key)
@@ -132,9 +126,7 @@ class TestMultiGPUTraining:
         # Create data loader
         input_shape = simple_structure.nodes["input"].node_info.shape
         output_shape = simple_structure.nodes["output"].node_info.shape
-        train_loader = SimpleDataLoader(
-            input_shape, output_shape, batch_size=8, num_batches=4, rng_key=data_key
-        )
+        train_loader = SimpleDataLoader(input_shape, output_shape, batch_size=8, num_batches=4, rng_key=data_key)
 
         # Make copies
         params_single = copy.deepcopy(params)
@@ -169,36 +161,23 @@ class TestMultiGPUTraining:
         first_epoch_energy = np.mean(iter_results_single[0])
         last_epoch_energy = np.mean(iter_results_single[-1])
         assert last_epoch_energy <= first_epoch_energy, (
-            f"Single-GPU: Energy should decrease. First: {first_epoch_energy:.4f}, "
-            f"Last: {last_epoch_energy:.4f}"
+            f"Single-GPU: Energy should decrease. First: {first_epoch_energy:.4f}, Last: {last_epoch_energy:.4f}"
         )
 
         # Evaluate both trained models on same data
-        eval_loader = SimpleDataLoader(
-            input_shape, output_shape, batch_size=8, num_batches=2, rng_key=eval_key
-        )
+        eval_loader = SimpleDataLoader(input_shape, output_shape, batch_size=8, num_batches=2, rng_key=eval_key)
 
         eval_config = {}
 
         eval_key1, eval_key2 = jax.random.split(eval_key)
-        metrics_single = evaluate_pcn(
-            trained_single, simple_structure, eval_loader, eval_config, eval_key1
-        )
-        metrics_multi = evaluate_pcn(
-            trained_multi, simple_structure, eval_loader, eval_config, eval_key2
-        )
+        metrics_single = evaluate_pcn(trained_single, simple_structure, eval_loader, eval_config, eval_key1)
+        metrics_multi = evaluate_pcn(trained_multi, simple_structure, eval_loader, eval_config, eval_key2)
 
         # Both should have finite energy
-        assert np.isfinite(
-            metrics_single["energy"]
-        ), "Single-GPU eval energy should be finite"
-        assert np.isfinite(
-            metrics_multi["energy"]
-        ), "Multi-GPU eval energy should be finite"
+        assert np.isfinite(metrics_single["energy"]), "Single-GPU eval energy should be finite"
+        assert np.isfinite(metrics_multi["energy"]), "Multi-GPU eval energy should be finite"
 
-    def test_numerical_similarity(
-        self, simple_structure, optimizer, train_config, rng_key
-    ):
+    def test_numerical_similarity(self, simple_structure, optimizer, train_config, rng_key):
         """
         Test that train_pcn with pmap_single_device=True produces numerically
         identical results to the JIT path.
@@ -215,9 +194,7 @@ class TestMultiGPUTraining:
         # Create data loader
         input_shape = simple_structure.nodes["input"].node_info.shape
         output_shape = simple_structure.nodes["output"].node_info.shape
-        train_loader = SimpleDataLoader(
-            input_shape, output_shape, batch_size=8, num_batches=4, rng_key=data_key
-        )
+        train_loader = SimpleDataLoader(input_shape, output_shape, batch_size=8, num_batches=4, rng_key=data_key)
 
         # Make copies with same initial params
         params_single = copy.deepcopy(params)
@@ -252,9 +229,7 @@ class TestMultiGPUTraining:
         param_diffs = []
 
         for node_name in simple_structure.nodes:
-            if (
-                simple_structure.nodes[node_name].node_info.in_degree > 0
-            ):  # Skip terminal input nodes (zero in_degree)
+            if simple_structure.nodes[node_name].node_info.in_degree > 0:  # Skip terminal input nodes (zero in_degree)
                 single_node = trained_single.nodes[node_name]
                 multi_node = trained_multi.nodes[node_name]
 
@@ -337,12 +312,8 @@ class TestMultiGPUUtilities:
                     *original_weight.shape,
                 ), f"Replicated weight shape mismatch for {node_name}/{edge_key}"
                 # Both replicas should be identical
-                assert jnp.allclose(
-                    weight[0], weight[1]
-                ), "Replicas should be identical"
-                assert jnp.allclose(
-                    weight[0], original_weight
-                ), "Replica should match original"
+                assert jnp.allclose(weight[0], weight[1]), "Replicas should be identical"
+                assert jnp.allclose(weight[0], original_weight), "Replica should match original"
 
     def test_unshard_energies(self):
         """Test energy unsharding utility."""

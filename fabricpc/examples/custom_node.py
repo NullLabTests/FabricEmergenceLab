@@ -15,28 +15,28 @@ from jax_setup import set_jax_flags_before_importing_jax
 set_jax_flags_before_importing_jax()
 
 import time
-from typing import Dict, Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
-import optax
 import numpy as np
-from fabricpc.utils.data.dataloader import MnistLoader
-
-from fabricpc.nodes import Linear
-from fabricpc.nodes.base import NodeBase, SlotSpec
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
+import optax
 from fabricpc.core.activations import (
     IdentityActivation,
     ReLUActivation,
     SigmoidActivation,
 )
 from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.initializers import NormalInitializer, initialize
 from fabricpc.core.inference import InferenceSGD
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
-from fabricpc.training import train_pcn, evaluate_pcn
+from fabricpc.core.initializers import NormalInitializer, initialize
+from fabricpc.core.topology import Edge
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import Linear
+from fabricpc.nodes.base import NodeBase, SlotSpec
+from fabricpc.training import evaluate_pcn, train_pcn
+from fabricpc.utils.data.dataloader import MnistLoader
 
 # --- Custom Node Definition ---
 
@@ -127,9 +127,7 @@ class Conv2DNode(NodeBase):
                 out_channels,
             )
 
-            weights_dict[edge_key] = initialize(
-                keys[i], kernel_param_shape, weight_init
-            )
+            weights_dict[edge_key] = initialize(keys[i], kernel_param_shape, weight_init)
 
         # Initialize bias
         use_bias = config.get("use_bias", True)
@@ -215,9 +213,7 @@ def create_conv_mnist_structure():
 
     Note: Using smaller channel counts for faster training in this demo.
     """
-    input_node = Linear(
-        shape=(28, 28, 1), activation=IdentityActivation(), name="input"
-    )
+    input_node = Linear(shape=(28, 28, 1), activation=IdentityActivation(), name="input")
     conv1 = Conv2DNode(
         shape=(26, 26, 16),  # VALID padding: 28-3+1=26
         kernel_size=(3, 3),
@@ -270,9 +266,7 @@ def main():
 
     print(f"Model created: {len(structure.nodes)} nodes, {len(structure.edges)} edges")
     for name, node in structure.nodes.items():
-        print(
-            f"  {name}: shape={node.node_info.shape}, type={node.node_info.node_type}"
-        )
+        print(f"  {name}: shape={node.node_info.shape}, type={node.node_info.node_type}")
 
     total_params = sum(p.size for p in jax.tree_util.tree_leaves(params))
     print(f"Total parameters: {total_params:,}")
@@ -298,14 +292,10 @@ def main():
     )
 
     train_time = time.time() - start_time
-    print(
-        f"Training time: {train_time:.1f}s ({train_time / train_config['num_epochs']:.1f}s per epoch)"
-    )
+    print(f"Training time: {train_time:.1f}s ({train_time / train_config['num_epochs']:.1f}s per epoch)")
 
     print("\nEvaluating...")
-    metrics = evaluate_pcn(
-        trained_params, structure, test_loader, train_config, eval_key
-    )
+    metrics = evaluate_pcn(trained_params, structure, test_loader, train_config, eval_key)
 
     print(f"Test Accuracy: {metrics['accuracy'] * 100:.2f}%")
 

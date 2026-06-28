@@ -7,9 +7,7 @@ from plotly import colors
 
 
 # Plot
-def plot_energy_history_interactive(
-    energy_history, title="Batch-averaged Energy Trajectories"
-):
+def plot_energy_history_interactive(energy_history, title="Batch-averaged Energy Trajectories"):
     """
     Interactive energy trajectories with Plotly.
     - energy_history: list of epochs; each epoch is list of batch energy lists.
@@ -47,9 +45,7 @@ def plot_energy_history_interactive(
                 )
             )
 
-    fig.update_layout(
-        title=title, xaxis_title="Inference Step t", yaxis_title="Log10 Energy"
-    )
+    fig.update_layout(title=title, xaxis_title="Inference Step t", yaxis_title="Log10 Energy")
 
     # Optional: log-scale y-axis if needed
     # fig.update_yaxes(type='log')
@@ -58,9 +54,7 @@ def plot_energy_history_interactive(
 
 
 # %%
-def plot_epoch_avg_interactive(
-    energy_history, title="Batch-Averaged Energy Trajectories (Mean ± 1-std)"
-):
+def plot_epoch_avg_interactive(energy_history, title="Batch-Averaged Energy Trajectories (Mean ± 1-std)"):
     """
     Interactive per-epoch mean ±1-std energy trajectories using Plotly.
     - energy_history: list of epochs; each epoch is list of batch energy trajectories.
@@ -75,11 +69,7 @@ def plot_epoch_avg_interactive(
     )
 
     epoch_colors = [
-        (
-            c
-            if isinstance(c, str)
-            else "#{0:02x}{1:02x}{2:02x}".format(*(int(round(255 * v)) for v in c))
-        )
+        (c if isinstance(c, str) else "#{0:02x}{1:02x}{2:02x}".format(*(int(round(255 * v)) for v in c)))
         for c in epoch_colors
     ]
 
@@ -111,9 +101,7 @@ def plot_epoch_avg_interactive(
                 mode="lines",
                 fill="tonexty",
                 # Convert hex '#rrggbb' → rgba(r,g,b,0.2)
-                fillcolor=f"rgba({int(color[1:3],16)},"
-                f"{int(color[3:5],16)},"
-                f"{int(color[5:7],16)},0.2)",
+                fillcolor=f"rgba({int(color[1:3], 16)},{int(color[3:5], 16)},{int(color[5:7], 16)},0.2)",
                 line=dict(width=0),
                 showlegend=False,
                 hoverinfo="skip",
@@ -127,12 +115,8 @@ def plot_epoch_avg_interactive(
                 y=mean,
                 mode="lines",
                 line=dict(color=color, width=2),
-                name=f"Epoch {epoch_idx+1}",
-                hovertemplate=(
-                    f"Epoch {epoch_idx+1}<br>"
-                    "Step %{x}<br>"
-                    "Energy %{y:.4f}<extra></extra>"
-                ),
+                name=f"Epoch {epoch_idx + 1}",
+                hovertemplate=(f"Epoch {epoch_idx + 1}<br>Step %{{x}}<br>Energy %{{y:.4f}}<extra></extra>"),
             )
         )
 
@@ -142,9 +126,7 @@ def plot_epoch_avg_interactive(
     fig.show()
 
 
-def plot_train_val_metric(
-    train_result: list, val_result: list, yaxis_title="Metric Name", logy=False
-):
+def plot_train_val_metric(train_result: list, val_result: list, yaxis_title="Metric Name", logy=False):
     """
     Plot training and validation metrics over epochs using Plotly.
     """

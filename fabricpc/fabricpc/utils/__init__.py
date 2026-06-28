@@ -2,10 +2,9 @@
 
 import importlib
 
-from fabricpc.utils.helpers import layernorm
-
 # Submodules
 from fabricpc.utils import data
+from fabricpc.utils.helpers import layernorm
 
 
 # Lazy import for dashboarding to avoid requiring aim at import time

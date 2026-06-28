@@ -9,20 +9,19 @@ future release.
 import warnings
 
 from fabricpc.training.train import (
-    train_pcn as _train_pcn,
     evaluate_pcn as _evaluate_pcn,
+)
+from fabricpc.training.train import (
     evaluate_transformer as _evaluate_transformer,
-    replicate_params,
-    replicate_opt_state,
-    shard_batch,
-    unshard_energies,
+)
+from fabricpc.training.train import (
+    train_pcn as _train_pcn,
 )
 
 
 def _deprecated(name):
     warnings.warn(
-        f"fabricpc.training.multi_gpu.{name} is deprecated. "
-        f"Import from fabricpc.training instead.",
+        f"fabricpc.training.multi_gpu.{name} is deprecated. Import from fabricpc.training instead.",
         DeprecationWarning,
         stacklevel=3,
     )

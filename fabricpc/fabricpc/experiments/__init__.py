@@ -1,11 +1,11 @@
 """Reusable experiment harnesses for comparing training methods and architectures."""
 
-from fabricpc.experiments.ab_experiment import ExperimentArm, ABExperiment, ABResults
+from fabricpc.experiments.ab_experiment import ABExperiment, ABResults, ExperimentArm
 from fabricpc.experiments.statistics import (
-    paired_ttest,
     cohens_d,
-    estimate_required_n,
     descriptive_stats,
+    estimate_required_n,
+    paired_ttest,
 )
 
 __all__ = [

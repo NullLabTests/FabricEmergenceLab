@@ -27,26 +27,26 @@ from jax_setup import set_jax_flags_before_importing_jax
 
 set_jax_flags_before_importing_jax()  # "cpu", "cuda" or "tpu"
 
-import jax
 import argparse
 import importlib.util
 import os
 
-from fabricpc.nodes import Linear
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
+import jax
+import optax
 from fabricpc.core.activations import (
+    ReLUActivation,
     SigmoidActivation,
     SoftmaxActivation,
-    ReLUActivation,
 )
 from fabricpc.core.energy import CrossEntropyEnergy
 from fabricpc.core.inference import InferenceSGD
-import optax
-from fabricpc.training import train_pcn, evaluate_pcn
-from fabricpc.training.train_backprop import train_backprop, evaluate_backprop
-from fabricpc.experiments import ExperimentArm, ABExperiment
+from fabricpc.core.topology import Edge
+from fabricpc.experiments import ABExperiment, ExperimentArm
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import Linear
+from fabricpc.training import evaluate_pcn, train_pcn
+from fabricpc.training.train_backprop import evaluate_backprop, train_backprop
 from fabricpc.utils.data.dataloader import MnistLoader
 
 # Import train_config and batch_size from mnist_demo without triggering examples/__init__.py
@@ -62,9 +62,7 @@ jax.config.update("jax_default_prng_impl", "threefry2x32")
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Statistical comparison of PC vs Backprop on MNIST"
-    )
+    parser = argparse.ArgumentParser(description="Statistical comparison of PC vs Backprop on MNIST")
     parser.add_argument(
         "--n_trials",
         type=int,
@@ -136,9 +134,9 @@ def main():
     print("=" * 70)
     print("Statistical Comparison: Predictive Coding vs Backpropagation")
     print("=" * 70)
-    print(f"Dataset: MNIST")
-    print(f"Architecture: 784 -> 256 -> 64 -> 10")
-    print(f"PC activations: sigmoid | Backprop activations: relu")
+    print("Dataset: MNIST")
+    print("Architecture: 784 -> 256 -> 64 -> 10")
+    print("PC activations: sigmoid | Backprop activations: relu")
     print(f"Epochs per trial: {train_config['num_epochs']}")
     print(f"Number of trials: {args.n_trials}")
     print()

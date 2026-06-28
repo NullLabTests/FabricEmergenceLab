@@ -32,7 +32,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from fabricpc_extensions.ansi import C, banner, header, ok, info, warn, err, star, dim, metric, line
+from fabricpc_extensions.ansi import C, banner, line, metric, star
+
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
 import jax
@@ -271,53 +272,58 @@ class BehaviorTracker:
             if key not in self._reported_events:
                 self._reported_events.add(key)
                 self._last_explore_step = step
-                events.append({
-                    "episode": episode,
-                    "step": step,
-                    "event_type": "sustained_exploration",
-                    "novelty_score": round(unique_ratio, 3),
-                    "description": f"Agent explored {n_unique} unique positions in last {BEHAVIOR_WINDOW} steps.",
-                })
+                events.append(
+                    {
+                        "episode": episode,
+                        "step": step,
+                        "event_type": "sustained_exploration",
+                        "novelty_score": round(unique_ratio, 3),
+                        "description": f"Agent explored {n_unique} unique positions in last {BEHAVIOR_WINDOW} steps.",
+                    }
+                )
 
-        if (
-            self.detect_loops()
-            and step - self._last_loop_step >= min_gap
-        ):
+        if self.detect_loops() and step - self._last_loop_step >= min_gap:
             self._last_loop_step = step
             loop_positions = self.position_history[-20:]
             center = loop_positions[-1] if loop_positions else (0, 0)
-            events.append({
-                "episode": episode,
-                "step": step,
-                "event_type": "repetitive_loop_detected",
-                "novelty_score": 0.6,
-                "description": f"Agent entered a repetitive loop near {center}.",
-            })
+            events.append(
+                {
+                    "episode": episode,
+                    "step": step,
+                    "event_type": "repetitive_loop_detected",
+                    "novelty_score": 0.6,
+                    "description": f"Agent entered a repetitive loop near {center}.",
+                }
+            )
 
         n_transitions = len(self.transitions)
         next_milestone = (n_transitions // 50) * 50
         if n_transitions > 0 and next_milestone > self._last_milestone:
             self._last_milestone = next_milestone
-            events.append({
-                "episode": episode,
-                "step": step,
-                "event_type": "state_transition_milestone",
-                "novelty_score": round(min(n_transitions / 400, 1.0), 3),
-                "description": f"Agent discovered {n_transitions} unique state transitions.",
-            })
+            events.append(
+                {
+                    "episode": episode,
+                    "step": step,
+                    "event_type": "state_transition_milestone",
+                    "novelty_score": round(min(n_transitions / 400, 1.0), 3),
+                    "description": f"Agent discovered {n_transitions} unique state transitions.",
+                }
+            )
 
         repeated = self.detect_repeated_motifs(min_count=5)
         if repeated:
             for motif, count in repeated[:3]:
                 if motif not in self._reported_motifs and count >= 5:
                     self._reported_motifs.add(motif)
-                    events.append({
-                        "episode": episode,
-                        "step": step,
-                        "event_type": "behavioral_motif_established",
-                        "novelty_score": round(min(count / 20, 1.0), 3),
-                        "description": f"Action motif {motif} repeated {count} times.",
-                    })
+                    events.append(
+                        {
+                            "episode": episode,
+                            "step": step,
+                            "event_type": "behavioral_motif_established",
+                            "novelty_score": round(min(count / 20, 1.0), 3),
+                            "description": f"Action motif {motif} repeated {count} times.",
+                        }
+                    )
 
         if events:
             self.detected_events.extend(events)
@@ -344,17 +350,20 @@ class PCAgent:
 
     def _build_network(self):
         obs_in = Linear(
-            shape=(OBS_DIM,), name="obs_in",
+            shape=(OBS_DIM,),
+            name="obs_in",
             activation=IdentityActivation(),
             energy=GaussianEnergy(),
         )
         hidden = Linear(
-            shape=(16,), name="hidden",
+            shape=(16,),
+            name="hidden",
             activation=TanhActivation(),
             energy=GaussianEnergy(),
         )
         obs_out = Linear(
-            shape=(OBS_DIM,), name="obs_out",
+            shape=(OBS_DIM,),
+            name="obs_out",
             activation=IdentityActivation(),
             energy=GaussianEnergy(),
         )
@@ -382,7 +391,11 @@ class PCAgent:
         }
         sk, self.rng_key = jax.random.split(self.rng_key)
         init_state = initialize_graph_state(
-            self.structure, batch_size, sk, clamps=clamps, params=self.params,
+            self.structure,
+            batch_size,
+            sk,
+            clamps=clamps,
+            params=self.params,
         )
         final_state = run_inference(self.params, init_state, clamps, self.structure)
         energy = 0.0
@@ -405,9 +418,7 @@ def compute_episode_metrics(
 ) -> Dict:
     errors = np.array(step_errors)
     unique_states = agent.pos_memory.n_unique()
-    total_retrievals = sum(
-        m.get("memory_retrievals", 0) for m in agent.memory.metadata[-N_STEPS:]
-    )
+    total_retrievals = sum(m.get("memory_retrievals", 0) for m in agent.memory.metadata[-N_STEPS:])
     n_transitions = len(agent.behavior.transitions)
     entropy = agent.behavior.navigation_entropy()
     repeated_motifs = len(agent.behavior.detect_repeated_motifs(min_count=3))
@@ -428,9 +439,7 @@ def compute_episode_metrics(
         "novelty_score": round(novelty, 4),
         "goals_reached": goals_reached,
         "total_reward": round(sum(step_rewards), 2),
-        "total_curiosity_reward": round(
-            sum(r for r in step_rewards if r != 10.0 and r != 0.0), 2
-        ),
+        "total_curiosity_reward": round(sum(r for r in step_rewards if r != 10.0 and r != 0.0), 2),
         "cooperation_events": 0,
         "communication_events": 0,
     }
@@ -503,12 +512,15 @@ def run_episode(
         mem_results = agent.memory.retrieve(curr_obs, top_k=MEMORY_TOP_K)
         retrieval_count = agent.memory.retrieval_count
         agent.memory.reset_count()
-        agent.memory.store(curr_obs, {
-            "pos": world.agent_pos,
-            "memory_retrievals": retrieval_count,
-            "reward": reward,
-            "error": prediction_error,
-        })
+        agent.memory.store(
+            curr_obs,
+            {
+                "pos": world.agent_pos,
+                "memory_retrievals": retrieval_count,
+                "reward": reward,
+                "error": prediction_error,
+            },
+        )
 
         entry = {
             "episode": episode,
@@ -557,13 +569,13 @@ def run_episode(
     print(f"\n  {C.BOLD}Episode {episode + 1} summary:{C.RESET}")
     print(metric("avg error", f"{metrics['avg_prediction_error']:.4f}"))
     print(metric("var error", f"{metrics['prediction_error_variance']:.4f}"))
-    print(metric("unique", metrics['unique_states_explored'], C.PURPLE))
-    print(metric("transitions", metrics['new_state_transitions'], C.PURPLE))
-    print(metric("entropy", metrics['agent_entropy'], C.BLUE))
-    print(metric("novelty", metrics['novelty_score'], C.BLUE))
+    print(metric("unique", metrics["unique_states_explored"], C.PURPLE))
+    print(metric("transitions", metrics["new_state_transitions"], C.PURPLE))
+    print(metric("entropy", metrics["agent_entropy"], C.BLUE))
+    print(metric("novelty", metrics["novelty_score"], C.BLUE))
     print(metric("goals", goals_reached, C.GREEN))
     print(metric("reward", f"{metrics['total_reward']:.1f}", C.GREEN))
-    print(metric("retrievals", metrics['memory_retrieval_count'], C.ORANGE))
+    print(metric("retrievals", metrics["memory_retrieval_count"], C.ORANGE))
     print(f"  {C.GRAY}Total events:{C.RESET} {C.PINK}{len(agent.behavior.detected_events)}{C.RESET}")
 
     return metrics
@@ -571,8 +583,12 @@ def run_episode(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="FabricEmergenceLab — Memory Maze (Phase 1)")
-    parser.add_argument("--episodes", type=int, default=int(os.environ.get("N_EPISODES", "3")),
-                        help="Number of episodes (default: 3, env: N_EPISODES)")
+    parser.add_argument(
+        "--episodes",
+        type=int,
+        default=int(os.environ.get("N_EPISODES", "3")),
+        help="Number of episodes (default: 3, env: N_EPISODES)",
+    )
     return parser.parse_args()
 
 
@@ -588,7 +604,7 @@ def main():
     print(metric("Steps/ep", N_STEPS))
     print(metric("Total steps", n_episodes * N_STEPS))
     print(metric("Window", f"{WINDOW_SIZE}x{WINDOW_SIZE}"))
-    print(metric("Explore", f"{EXPLORE_RATE*100:.0f}%"))
+    print(metric("Explore", f"{EXPLORE_RATE * 100:.0f}%"))
     print(line())
 
     rng_key = jax.random.PRNGKey(42)
@@ -600,9 +616,7 @@ def main():
     if STEP_LOG.exists():
         step_log_mode = "a"
 
-    with open(STEP_LOG, step_log_mode) as step_f, \
-         open(METRIC_LOG, "a") as metric_f, \
-         open(EVENT_LOG, "a") as event_f:
+    with open(STEP_LOG, step_log_mode) as step_f, open(METRIC_LOG, "a") as metric_f, open(EVENT_LOG, "a") as event_f:
         for ep in range(n_episodes):
             metrics = run_episode(ep, agent, step_f, metric_f, event_f, n_episodes)
             all_metrics.append(metrics)
@@ -615,7 +629,7 @@ def main():
     total_unique = max(m["unique_states_explored"] for m in all_metrics)
     total_retrievals = sum(m["memory_retrieval_count"] for m in all_metrics)
     total_goals = sum(m["goals_reached"] for m in all_metrics)
-    total_events = sum(len(agent.behavior.detected_events) for m in all_metrics) if hasattr(agent, 'behavior') else 0
+    total_events = sum(len(agent.behavior.detected_events) for m in all_metrics) if hasattr(agent, "behavior") else 0
 
     print(metric("Avg prediction error", f"{avg_error:.4f}"))
     print(metric("Avg novelty score", f"{avg_novelty:.4f}"))

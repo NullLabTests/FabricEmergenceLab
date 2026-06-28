@@ -13,18 +13,17 @@ set_jax_flags_before_importing_jax(jax_platforms="cpu")
 
 import jax
 import jax.numpy as jnp
-
-from fabricpc.nodes import Linear, IdentityNode
+from fabricpc.core.activations import IdentityActivation, TanhActivation
+from fabricpc.core.inference import InferenceSGD, run_inference
+from fabricpc.core.initializers import MuPCInitializer
+from fabricpc.core.learning import compute_local_weight_gradients
+from fabricpc.core.mupc import MuPCConfig
+from fabricpc.core.state_ops import set_latents_to_clamps
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
-from fabricpc.core.state_ops import set_latents_to_clamps
-from fabricpc.core.learning import compute_local_weight_gradients
-from fabricpc.core.activations import IdentityActivation, TanhActivation
-from fabricpc.core.inference import InferenceSGD, run_inference
-from fabricpc.core.initializers import MuPCInitializer
-from fabricpc.core.mupc import MuPCConfig
+from fabricpc.nodes import IdentityNode, Linear
 
 
 def main():
@@ -88,9 +87,7 @@ def main():
                 source = structure.edges[ek].source
                 src_shape = structure.nodes[source].node_info.shape
                 fan_in = type(node).get_weight_fan_in(src_shape, ni.node_config)
-                print(
-                    f"{name:<12} {str(ni.shape):<12} {ni.in_degree:>3} {fan_in:>8} {a:>12.6f}"
-                )
+                print(f"{name:<12} {str(ni.shape):<12} {ni.in_degree:>3} {fan_in:>8} {a:>12.6f}")
         else:
             print(f"{name:<12} {str(ni.shape):<12}   - {'':>8} {'no scaling':>12}")
 

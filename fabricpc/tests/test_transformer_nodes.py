@@ -7,32 +7,28 @@ import os
 # Set JAX to CPU to avoid potential OOM on small test runners
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
 
-import pytest
 import jax
 import jax.numpy as jnp
 import numpy as np
-
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
-from fabricpc.graph_initialization import initialize_params
-from fabricpc.graph_initialization.state_initializer import (
-    initialize_graph_state,
-    FeedforwardStateInit,
-)
-from fabricpc.core.inference import run_inference, InferenceSGD
-from fabricpc.training import train_step
 import optax
-from fabricpc.nodes import Linear
+import pytest
+from fabricpc.core.inference import InferenceSGD, run_inference
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
-
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.graph_initialization.state_initializer import (
+    FeedforwardStateInit,
+    initialize_graph_state,
+)
+from fabricpc.nodes import Linear
 from fabricpc.nodes.transformer_v2 import (
     EmbeddingNode,
-    MhaResidualNode,
     LnMlp1Node,
+    MhaResidualNode,
     Mlp2ResidualNode,
-    VocabProjectionNode,
     create_deep_transformer,
 )
+from fabricpc.training import train_step
 
 
 @pytest.fixture
@@ -41,7 +37,6 @@ def rng_key():
 
 
 class TestEmbeddingNode:
-
     @pytest.fixture
     def embedding_graph(self, rng_key):
         """Creates a simple graph: Input (Linear) -> Embedding -> Output (Linear)"""
@@ -95,9 +90,7 @@ class TestEmbeddingNode:
         dummy_y = jnp.zeros((batch_size, seq_len, 10))
 
         clamps = {"indices": input_indices, "output": dummy_y}
-        state = initialize_graph_state(
-            structure, batch_size, rng_key, clamps=clamps, params=params
-        )
+        state = initialize_graph_state(structure, batch_size, rng_key, clamps=clamps, params=params)
         W = params.nodes["embed"].weights["embeddings"]
 
         expected_vectors = W[input_indices]  # (batch, seq, embed_dim)
@@ -121,9 +114,7 @@ class TestEmbeddingNode:
         input_indices = jnp.ones((batch_size, 5), dtype=jnp.int32)
         clamps = {"indices": input_indices}
 
-        state = initialize_graph_state(
-            structure, batch_size, rng_key, clamps=clamps, params=params
-        )
+        state = initialize_graph_state(structure, batch_size, rng_key, clamps=clamps, params=params)
         node_info = structure.nodes["embed"].node_info
         node_state = state.nodes["embed"]
         node_params = params.nodes["embed"]
@@ -142,9 +133,7 @@ class TestEmbeddingNode:
         # Check input gradients
         grad = input_grads["indices->embed:in"]
 
-        assert jnp.all(
-            grad == 0.0
-        ), "Embedding node must return zero gradients for inputs"
+        assert jnp.all(grad == 0.0), "Embedding node must return zero gradients for inputs"
         assert grad.shape == input_indices.shape
 
     def test_learning_updates_embeddings(self, embedding_graph, rng_key):
@@ -192,9 +181,7 @@ class TestEmbeddingNode:
 
         # The row corresponding to unused index SHOULD NOT change
         diff_unused = jnp.abs(new_row_0 - old_row_0)
-        assert (
-            jnp.max(diff_unused) < 1e-6
-        ), "Embedding weights for inactive index changed unexpectedly"
+        assert jnp.max(diff_unused) < 1e-6, "Embedding weights for inactive index changed unexpectedly"
 
     def test_forward_squeeze_logic(self, embedding_graph, rng_key):
         """Test the logic handling (batch, seq, 1) inputs."""
@@ -207,9 +194,7 @@ class TestEmbeddingNode:
         # Clamp the source with int indices so FeedforwardStateInit's forward
         # pass through EmbeddingNode receives integer upstream z_latent.
         clamps = {"indices": jnp.zeros((2, 5), dtype=jnp.int32)}
-        state = initialize_graph_state(
-            structure, 2, rng_key, clamps=clamps, params=params
-        ).nodes["embed"]
+        state = initialize_graph_state(structure, 2, rng_key, clamps=clamps, params=params).nodes["embed"]
         node_params = params.nodes["embed"]
         node_info = structure.nodes["embed"].node_info
 
@@ -220,7 +205,6 @@ class TestEmbeddingNode:
 
 
 class TestTransformerBlock:
-
     @pytest.fixture
     def single_block_graph(self, rng_key):
         """Build a single MHA+MLP block: input -> mha -> mlp1 -> mlp2 -> output."""
@@ -274,9 +258,7 @@ class TestTransformerBlock:
         x = jax.random.normal(rng_key, (batch_size, 10, 32))
         clamps = {"input": x, "output": jnp.zeros_like(x)}
 
-        state = initialize_graph_state(
-            structure, batch_size, rng_key, clamps=clamps, params=params
-        )
+        state = initialize_graph_state(structure, batch_size, rng_key, clamps=clamps, params=params)
         final_state = run_inference(params, state, clamps, structure)
 
         block_latent = final_state.nodes["mlp2"].z_latent
@@ -321,9 +303,7 @@ class TestTransformerBlock:
 
         # Check Last Token (Should Change - Self Attention Working)
         diff_last = jnp.abs(out_1[:, -1, :] - out_2[:, -1, :]).max()
-        assert (
-            diff_last > 1e-4
-        ), "Self-attention failed! Last token ignored input change."
+        assert diff_last > 1e-4, "Self-attention failed! Last token ignored input change."
 
     def test_block_learning(self, single_block_graph, rng_key):
         """Verify gradients propagate and loss decreases (overfitting test)."""
@@ -371,9 +351,7 @@ class TestTransformerBlock:
         assert len(structure.edges) == 14
 
         # Check node types in topological order
-        node_types = [
-            structure.nodes[n].node_info.node_type for n in structure.node_order
-        ]
+        node_types = [structure.nodes[n].node_info.node_type for n in structure.node_order]
         assert node_types[0] == "Linear"  # input_ids
         assert node_types[1] == "EmbeddingNode"  # embed
         assert node_types[-1] == "VocabProjectionNode"  # logits
@@ -407,9 +385,7 @@ class TestTransformerBlock:
         y_dummy = jnp.zeros((batch_size, seq_len, vocab_size))
         clamps = {"input_ids": x_indices, "logits": y_dummy}
 
-        state = initialize_graph_state(
-            structure, batch_size, rng_key, clamps=clamps, params=params
-        )
+        state = initialize_graph_state(structure, batch_size, rng_key, clamps=clamps, params=params)
         final_state = run_inference(params, state, clamps, structure)
 
         # Check signal reached the end
@@ -420,7 +396,6 @@ class TestTransformerBlock:
 
 
 class TestEvaluateTransformer:
-
     def test_smoke(self, rng_key):
         """evaluate_transformer returns expected keys with finite values."""
         from fabricpc.training.train import evaluate_transformer

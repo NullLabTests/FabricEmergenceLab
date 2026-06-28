@@ -11,24 +11,21 @@ import os
 
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
 
-import pytest
 import jax
 import jax.numpy as jnp
-import numpy as np
-
+import pytest
+from fabricpc.core.inference import InferenceSGD
+from fabricpc.core.mupc import MuPCConfig
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.graph_initialization.state_initializer import (
+    FeedforwardStateInit,
+    initialize_graph_state,
+)
 from fabricpc.nodes import Linear
 from fabricpc.nodes.identity import IdentityNode
 from fabricpc.nodes.transformer import TransformerBlock
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.core.inference import InferenceSGD
-from fabricpc.core.mupc import MuPCConfig
-from fabricpc.core.initializers import MuPCInitializer
-from fabricpc.graph_initialization import initialize_params
-from fabricpc.graph_initialization.state_initializer import (
-    initialize_graph_state,
-    FeedforwardStateInit,
-)
 
 
 @pytest.fixture
@@ -42,7 +39,6 @@ def rng_key():
 
 
 class TestTransformerFanIn:
-
     def test_returns_embed_dim(self):
         """get_weight_fan_in should return the last dimension (embed_dim)."""
         assert TransformerBlock.get_weight_fan_in((128, 512), {}) == 512
@@ -51,10 +47,7 @@ class TestTransformerFanIn:
 
     def test_ignores_flatten_input(self):
         """flatten_input should not affect transformer fan_in (always last dim)."""
-        assert (
-            TransformerBlock.get_weight_fan_in((128, 512), {"flatten_input": True})
-            == 512
-        )
+        assert TransformerBlock.get_weight_fan_in((128, 512), {"flatten_input": True}) == 512
 
 
 # ============================================================================
@@ -63,7 +56,6 @@ class TestTransformerFanIn:
 
 
 class TestTransformerMuPCVariance:
-
     @pytest.fixture
     def transformer_graph_mupc(self, rng_key):
         """TransformerBlock graph with muPC scaling."""
@@ -155,8 +147,7 @@ class TestTransformerMuPCVariance:
         # Variance should be near unity. Allow generous tolerance for
         # finite-size effects (softmax averaging approximation, etc.)
         assert 0.3 < var_z_mu < 3.0, (
-            f"z_mu variance {var_z_mu:.4f} is outside acceptable range [0.3, 3.0] "
-            f"for muPC-scaled TransformerBlock"
+            f"z_mu variance {var_z_mu:.4f} is outside acceptable range [0.3, 3.0] for muPC-scaled TransformerBlock"
         )
 
     def test_z_mu_variance_different_seq_lens(self, rng_key):
@@ -200,13 +191,9 @@ class TestTransformerMuPCVariance:
             )
 
             var_z_mu = float(jnp.var(state.nodes["transformer"].z_mu))
-            assert (
-                0.2 < var_z_mu < 5.0
-            ), f"seq_len={seq_len}: z_mu variance {var_z_mu:.4f} outside [0.2, 5.0]"
+            assert 0.2 < var_z_mu < 5.0, f"seq_len={seq_len}: z_mu variance {var_z_mu:.4f} outside [0.2, 5.0]"
 
-    def test_no_mupc_variance_still_controlled(
-        self, transformer_graph_no_mupc, rng_key
-    ):
+    def test_no_mupc_variance_still_controlled(self, transformer_graph_no_mupc, rng_key):
         """Without muPC, internal scaling (1/sqrt(2) residuals, sqrt-eff-ctx) still applies."""
         structure = transformer_graph_no_mupc
         params = initialize_params(structure, rng_key)
@@ -229,6 +216,4 @@ class TestTransformerMuPCVariance:
         # Internal variance control is always on — z_mu should be near unity
         # even without muPC inter-node scaling.
         var_z_mu = float(jnp.var(state.nodes["transformer"].z_mu))
-        assert (
-            0.2 < var_z_mu < 5.0
-        ), f"Non-muPC z_mu variance {var_z_mu:.4f} outside [0.2, 5.0]"
+        assert 0.2 < var_z_mu < 5.0, f"Non-muPC z_mu variance {var_z_mu:.4f} outside [0.2, 5.0]"

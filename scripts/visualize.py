@@ -9,7 +9,7 @@ Usage:
 import argparse
 import json
 import math
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 from typing import Dict, List
 
@@ -19,9 +19,11 @@ BASE = Path(__file__).resolve().parent.parent
 
 try:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.ticker import MaxNLocator
+
     HAS_MPL = True
 except ImportError:
     HAS_MPL = False
@@ -44,25 +46,27 @@ def load_jsonl(path):
 
 def dark_style():
     """Apply a sleek dark theme with accent colors."""
-    plt.rcParams.update({
-        "figure.facecolor": "#0d1117",
-        "axes.facecolor": "#161b22",
-        "axes.edgecolor": "#30363d",
-        "axes.labelcolor": "#c9d1d9",
-        "axes.titlecolor": "#f0f6fc",
-        "text.color": "#c9d1d9",
-        "xtick.color": "#8b949e",
-        "ytick.color": "#8b949e",
-        "grid.color": "#21262d",
-        "grid.alpha": 0.6,
-        "legend.facecolor": "#161b22",
-        "legend.edgecolor": "#30363d",
-        "legend.labelcolor": "#c9d1d9",
-        "figure.dpi": 150,
-        "savefig.dpi": 150,
-        "savefig.bbox": "tight",
-        "font.size": 11,
-    })
+    plt.rcParams.update(
+        {
+            "figure.facecolor": "#0d1117",
+            "axes.facecolor": "#161b22",
+            "axes.edgecolor": "#30363d",
+            "axes.labelcolor": "#c9d1d9",
+            "axes.titlecolor": "#f0f6fc",
+            "text.color": "#c9d1d9",
+            "xtick.color": "#8b949e",
+            "ytick.color": "#8b949e",
+            "grid.color": "#21262d",
+            "grid.alpha": 0.6,
+            "legend.facecolor": "#161b22",
+            "legend.edgecolor": "#30363d",
+            "legend.labelcolor": "#c9d1d9",
+            "figure.dpi": 150,
+            "savefig.dpi": 150,
+            "savefig.bbox": "tight",
+            "font.size": 11,
+        }
+    )
 
 
 ACCENT_CYAN = "#58a6ff"
@@ -85,17 +89,27 @@ def plot_error_trajectory(metrics: List[Dict], out_dir: Path):
     ax.plot(eps, errors, color=ACCENT_CYAN, linewidth=2, marker="o", markersize=4, label="Mean error")
     if any(v > 0 for v in variances):
         std = [math.sqrt(v) for v in variances]
-        ax.fill_between(eps, [e - s for e, s in zip(errors, std)],
-                        [e + s for e, s in zip(errors, std)],
-                        color=ACCENT_CYAN, alpha=0.12, label="±1σ")
+        ax.fill_between(
+            eps,
+            [e - s for e, s in zip(errors, std)],
+            [e + s for e, s in zip(errors, std)],
+            color=ACCENT_CYAN,
+            alpha=0.12,
+            label="±1σ",
+        )
 
     if len(errors) >= 2:
         first, last = errors[0], errors[-1]
         change_pct = (last - first) / max(first, 1e-10) * 100
-        ax.annotate(f"↓{abs(change_pct):.0f}%", xy=(eps[-1], last),
-                    xytext=(10, 10), textcoords="offset points",
-                    color=ACCENT_GREEN if change_pct < 0 else ACCENT_RED,
-                    fontweight="bold", fontsize=13)
+        ax.annotate(
+            f"↓{abs(change_pct):.0f}%",
+            xy=(eps[-1], last),
+            xytext=(10, 10),
+            textcoords="offset points",
+            color=ACCENT_GREEN if change_pct < 0 else ACCENT_RED,
+            fontweight="bold",
+            fontsize=13,
+        )
 
     ax.set_xlabel("Episode")
     ax.set_ylabel("Prediction Error")
@@ -134,9 +148,7 @@ def plot_exploration(metrics: List[Dict], out_dir: Path):
     ax2.tick_params(axis="y", labelcolor=color_n)
 
     line2 = list(ax2.get_lines())[0]
-    ax1.legend([bars, line2],
-               [bars.get_label(), line2.get_label()],
-               loc="upper left")
+    ax1.legend([bars, line2], [bars.get_label(), line2.get_label()], loc="upper left")
 
     ax1.set_title("Exploration Over Episodes", color=ACCENT_GREEN, fontweight="bold")
     fig.tight_layout()
@@ -153,13 +165,19 @@ def plot_emergence_events(events: List[Dict], out_dir: Path):
     counter = Counter(e.get("event_type", "unknown") for e in events)
     types = list(counter.keys())
     counts = list(counter.values())
-    colors = [ACCENT_CYAN, ACCENT_ORANGE, ACCENT_GREEN, ACCENT_PURPLE, ACCENT_PINK][:len(types)]
+    colors = [ACCENT_CYAN, ACCENT_ORANGE, ACCENT_GREEN, ACCENT_PURPLE, ACCENT_PINK][: len(types)]
 
     fig, ax = plt.subplots(figsize=(10, 4))
     bars = ax.barh(types, counts, color=colors, height=0.6)
     for bar, count in zip(bars, counts):
-        ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
-                str(count), va="center", color=ACCENT_CYAN, fontweight="bold")
+        ax.text(
+            bar.get_width() + 0.5,
+            bar.get_y() + bar.get_height() / 2,
+            str(count),
+            va="center",
+            color=ACCENT_CYAN,
+            fontweight="bold",
+        )
 
     ax.set_xlabel("Count")
     ax.set_title("Emergence Events by Type", color=ACCENT_PURPLE, fontweight="bold")
@@ -180,8 +198,7 @@ def plot_learning_curve_by_step(step_log: Path, out_dir: Path):
     fig, ax = plt.subplots(figsize=(12, 4))
 
     episodes = sorted(set(s.get("episode", -1) for s in steps))
-    colors = [ACCENT_CYAN, ACCENT_ORANGE, ACCENT_GREEN, ACCENT_RED,
-              ACCENT_PURPLE, ACCENT_PINK, "#58a6ff", "#3fb950"]
+    colors = [ACCENT_CYAN, ACCENT_ORANGE, ACCENT_GREEN, ACCENT_RED, ACCENT_PURPLE, ACCENT_PINK, "#58a6ff", "#3fb950"]
 
     for i, ep in enumerate(episodes[:8]):
         ep_steps = [s for s in steps if s.get("episode", -1) == ep]
@@ -193,11 +210,9 @@ def plot_learning_curve_by_step(step_log: Path, out_dir: Path):
         if len(errs) > window:
             smooth = np.convolve(errs, np.ones(window) / window, mode="valid")
             ts_smooth = list(range(window - 1, len(errs)))
-            ax.plot(ts_smooth, smooth, color=colors[i % len(colors)],
-                    linewidth=1.5, alpha=0.85, label=f"Episode {ep}")
+            ax.plot(ts_smooth, smooth, color=colors[i % len(colors)], linewidth=1.5, alpha=0.85, label=f"Episode {ep}")
         else:
-            ax.plot(ts, errs, color=colors[i % len(colors)],
-                    linewidth=1, alpha=0.6, label=f"Episode {ep}")
+            ax.plot(ts, errs, color=colors[i % len(colors)], linewidth=1, alpha=0.6, label=f"Episode {ep}")
 
     ax.set_xlabel("Timestep")
     ax.set_ylabel("Prediction Error")
@@ -241,7 +256,7 @@ def plot_dashboard(metrics: List[Dict], events: List[Dict], out_dir: Path):
         counter = Counter(e.get("event_type", "unknown") for e in events)
         types = list(counter.keys())
         counts = list(counter.values())
-        colors = [ACCENT_CYAN, ACCENT_ORANGE, ACCENT_GREEN, ACCENT_PURPLE][:len(types)]
+        colors = [ACCENT_CYAN, ACCENT_ORANGE, ACCENT_GREEN, ACCENT_PURPLE][: len(types)]
         ax.barh(types, counts, color=colors, height=0.5)
         ax.set_title("Emergence Events", color=ACCENT_PURPLE, fontweight="bold")
         ax.set_xlabel("Count")
@@ -254,8 +269,7 @@ def plot_dashboard(metrics: List[Dict], events: List[Dict], out_dir: Path):
     ax.set_xlabel("Episode"), ax.set_ylabel("Retrievals")
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-    fig.suptitle("FabricEmergenceLab — Experiment Dashboard", color="#f0f6fc",
-                 fontsize=16, fontweight="bold", y=1.01)
+    fig.suptitle("FabricEmergenceLab — Experiment Dashboard", color="#f0f6fc", fontsize=16, fontweight="bold", y=1.01)
     fig.tight_layout()
     path = out_dir / "dashboard.png"
     fig.savefig(path)
@@ -265,14 +279,14 @@ def plot_dashboard(metrics: List[Dict], events: List[Dict], out_dir: Path):
 
 def main():
     parser = argparse.ArgumentParser(description="Generate experiment visualizations")
-    parser.add_argument("--metrics", default=str(BASE / "logs" / "emergence_metrics.jsonl"),
-                        help="Path to metrics JSONL")
-    parser.add_argument("--events", default=str(BASE / "logs" / "emergence_events.jsonl"),
-                        help="Path to emergence events JSONL")
-    parser.add_argument("--step-log", default=str(BASE / "logs" / "memory_maze.jsonl"),
-                        help="Path to step log JSONL")
-    parser.add_argument("--output", default=str(BASE / "docs" / "figures"),
-                        help="Output directory for figures")
+    parser.add_argument(
+        "--metrics", default=str(BASE / "logs" / "emergence_metrics.jsonl"), help="Path to metrics JSONL"
+    )
+    parser.add_argument(
+        "--events", default=str(BASE / "logs" / "emergence_events.jsonl"), help="Path to emergence events JSONL"
+    )
+    parser.add_argument("--step-log", default=str(BASE / "logs" / "memory_maze.jsonl"), help="Path to step log JSONL")
+    parser.add_argument("--output", default=str(BASE / "docs" / "figures"), help="Output directory for figures")
     parser.add_argument("--no-dashboard", action="store_true", help="Skip dashboard")
     args = parser.parse_args()
 
@@ -291,20 +305,25 @@ def main():
     generated = []
 
     p = plot_error_trajectory(metrics, out_dir)
-    if p: generated.append(p)
+    if p:
+        generated.append(p)
 
     p = plot_exploration(metrics, out_dir)
-    if p: generated.append(p)
+    if p:
+        generated.append(p)
 
     p = plot_emergence_events(events, out_dir)
-    if p: generated.append(p)
+    if p:
+        generated.append(p)
 
     p = plot_learning_curve_by_step(Path(args.step_log), out_dir)
-    if p: generated.append(p)
+    if p:
+        generated.append(p)
 
     if not args.no_dashboard:
         p = plot_dashboard(metrics, events, out_dir)
-        if p: generated.append(p)
+        if p:
+            generated.append(p)
 
     print(f"Generated {len(generated)} figures in {out_dir}:")
     for g in generated:

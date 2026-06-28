@@ -33,16 +33,18 @@ Users can create custom nodes by extending NodeBase:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
 import copy
 import types
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
 import numpy as np
-from dataclasses import dataclass
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo, SlotInfo, EdgeInfo
+
 from fabricpc.core.topology import SlotRef, _get_current_namespace
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
 
 if TYPE_CHECKING:
     from fabricpc.core.activations import ActivationBase
@@ -56,12 +58,8 @@ class SlotSpec:
 
     name: str
     is_multi_input: bool  # True = multiple inputs allowed, False = single input only
-    is_variance_scalable: bool = (
-        True  # False = muPC leaves edges to this slot unscaled (scale 1.0)
-    )
-    is_skip_connection: bool = (
-        False  # True = identity bypass path that counts toward muPC depth L
-    )
+    is_variance_scalable: bool = True  # False = muPC leaves edges to this slot unscaled (scale 1.0)
+    is_skip_connection: bool = False  # True = identity bypass path that counts toward muPC depth L
 
     def __post_init__(self):
         if self.is_skip_connection and self.is_variance_scalable:
@@ -140,9 +138,7 @@ class FlattenInputMixin:
 
         for edge_key, x in inputs.items():
             x_flat = FlattenInputMixin.flatten_input(x)
-            pre_activation_flat = pre_activation_flat + jnp.matmul(
-                x_flat, weights[edge_key]
-            )
+            pre_activation_flat = pre_activation_flat + jnp.matmul(x_flat, weights[edge_key])
 
         return FlattenInputMixin.reshape_output(pre_activation_flat, out_shape)
 
@@ -195,9 +191,7 @@ class NodeBase(ABC):
         self._energy = energy
         self._latent_init = latent_init
         self._weight_init = weight_init
-        self._extra_config = types.MappingProxyType(
-            extra_config
-        )  # Immutable dictionary
+        self._extra_config = types.MappingProxyType(extra_config)  # Immutable dictionary
         self._node_info = None  # Set by graph builder (copy-on-finalize)
 
     @property
@@ -230,10 +224,7 @@ class NodeBase(ABC):
         """
         slot_specs = type(self).get_slots()
         if slot_name not in slot_specs:
-            raise KeyError(
-                f"Node '{self._name}' has no slot '{slot_name}'. "
-                f"Available: {list(slot_specs.keys())}"
-            )
+            raise KeyError(f"Node '{self._name}' has no slot '{slot_name}'. Available: {list(slot_specs.keys())}")
         return SlotRef(node=self, slot=slot_name)
 
     def _with_graph_info(self, node_info: NodeInfo) -> "NodeBase":
@@ -448,18 +439,14 @@ class NodeBase(ABC):
             # Update the state's energy; will be zero since z_mu = z_latent
             new_state = node_class.energy_functional(new_state, node_info)
             # No inputs, no contribution to latent_grad of self or upstream
-            input_grads = {
-                edge_key: jnp.zeros_like(inputs[edge_key]) for edge_key in inputs
-            }
+            input_grads = {edge_key: jnp.zeros_like(inputs[edge_key]) for edge_key in inputs}
             self_grad = jnp.zeros_like(state.latent_grad)
 
         elif node_info.out_degree == 0 and not is_clamped:
             # No post-synaptic targets and no clamped data!
             # This happens for output nodes when the model is run in inference/evaluation mode (not training)
             # Compute its projection (z_mu) but no gradient since it doesn't contribute to any error.
-            total_energy, new_state = node_class.forward(
-                params, inputs, state, node_info
-            )
+            total_energy, new_state = node_class.forward(params, inputs, state, node_info)
             # Update keeping the projection, but zero error.
             new_state = new_state._replace(
                 z_latent=new_state.z_mu,
@@ -467,9 +454,7 @@ class NodeBase(ABC):
                 energy=jnp.zeros_like(new_state.energy),
                 latent_grad=jnp.zeros_like(new_state.latent_grad),
             )
-            input_grads = {
-                edge_key: jnp.zeros_like(inputs[edge_key]) for edge_key in inputs
-            }
+            input_grads = {edge_key: jnp.zeros_like(inputs[edge_key]) for edge_key in inputs}
             self_grad = jnp.zeros_like(state.z_latent)
 
         else:
@@ -477,9 +462,7 @@ class NodeBase(ABC):
             # Extract z_latent as a separate differentiable argument via closure.
             def energy_fn(input_args, z_latent):
                 s = state._replace(z_latent=z_latent)
-                total_energy, new_s = node_class.forward(
-                    params, input_args, s, node_info
-                )
+                total_energy, new_s = node_class.forward(params, input_args, s, node_info)
                 return total_energy, new_s
 
             (total_energy, new_state), (input_grads, self_grad) = jax.value_and_grad(
@@ -519,9 +502,9 @@ class NodeBase(ABC):
         """
         node_class = node_info.node_class
 
-        (total_energy, new_state), params_grad = jax.value_and_grad(
-            node_class.forward, argnums=0, has_aux=True
-        )(params, inputs, state, node_info)
+        (total_energy, new_state), params_grad = jax.value_and_grad(node_class.forward, argnums=0, has_aux=True)(
+            params, inputs, state, node_info
+        )
 
         return new_state, params_grad
 
@@ -543,9 +526,7 @@ class NodeBase(ABC):
         """
         energy_obj = node_info.energy
         if energy_obj is None:
-            raise ValueError(
-                f"Node '{node_info.name}' has no energy functional configured."
-            )
+            raise ValueError(f"Node '{node_info.name}' has no energy functional configured.")
 
         energy_cls = type(energy_obj)
         config = energy_obj.config

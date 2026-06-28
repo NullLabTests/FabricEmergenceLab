@@ -6,10 +6,11 @@ be used safely with JIT-compiled code by calling them on the outputs.
 """
 
 from typing import Dict, List, Optional
+
 import jax.numpy as jnp
 import numpy as np
 
-from fabricpc.core.types import GraphState, GraphParams, GraphStructure
+from fabricpc.core.types import GraphParams, GraphState, GraphStructure
 
 
 def extract_node_energies(state: GraphState) -> Dict[str, np.ndarray]:
@@ -21,10 +22,7 @@ def extract_node_energies(state: GraphState) -> Dict[str, np.ndarray]:
     Returns:
         Dictionary mapping node names to energy arrays (batch_size,).
     """
-    return {
-        node_name: np.asarray(node_state.energy)
-        for node_name, node_state in state.nodes.items()
-    }
+    return {node_name: np.asarray(node_state.energy) for node_name, node_state in state.nodes.items()}
 
 
 def extract_total_energy(
@@ -285,13 +283,9 @@ def extract_all_distributions(
 
     for node_name in nodes:
         node_state = state.nodes[node_name]
-        distributions["z_latent"][node_name] = flatten_for_distribution(
-            node_state.z_latent
-        )
+        distributions["z_latent"][node_name] = flatten_for_distribution(node_state.z_latent)
         distributions["z_mu"][node_name] = flatten_for_distribution(node_state.z_mu)
-        distributions["pre_activation"][node_name] = flatten_for_distribution(
-            node_state.pre_activation
-        )
+        distributions["pre_activation"][node_name] = flatten_for_distribution(node_state.pre_activation)
         distributions["error"][node_name] = flatten_for_distribution(node_state.error)
 
     for node_name in nodes:

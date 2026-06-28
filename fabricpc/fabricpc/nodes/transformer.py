@@ -5,15 +5,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
 
-from fabricpc.nodes.base import NodeBase, SlotSpec
-from fabricpc.core.activations import IdentityActivation, GeluActivation
+from fabricpc.core.activations import GeluActivation, IdentityActivation
 from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.initializers import NormalInitializer, KaimingInitializer, initialize
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
-from typing import Dict, Optional, Tuple, Any, TYPE_CHECKING
+from fabricpc.core.initializers import KaimingInitializer, NormalInitializer, initialize
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
+from fabricpc.nodes.base import NodeBase, SlotSpec
 
 if TYPE_CHECKING:
     from fabricpc.core.activations import ActivationBase
@@ -25,9 +26,7 @@ if TYPE_CHECKING:
 # =============================================================================
 
 
-def precompute_freqs_cis(
-    head_dim: int, max_seq_len: int, theta: float = 10000.0
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def precompute_freqs_cis(head_dim: int, max_seq_len: int, theta: float = 10000.0) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
       Precompute the frequency tensor for RoPE (Rotary Position Embeddings).
 
@@ -294,9 +293,7 @@ class TransformerBlock(NodeBase):
         # Get internal activation from config (stored as ActivationBase instance)
         internal_activation = config.get("internal_activation")
         if internal_activation is not None:
-            activation_fn = lambda x: type(internal_activation).forward(
-                x, internal_activation.config
-            )
+            activation_fn = lambda x: type(internal_activation).forward(x, internal_activation.config)
         else:
             activation_fn = lambda x: x
 
@@ -312,9 +309,7 @@ class TransformerBlock(NodeBase):
         mask = inputs[mask_edge_key] if mask_edge_key else None
 
         # LayerNorm 1
-        x_norm1 = TransformerBlock._layernorm(
-            input_tensor, params.weights["ln1_gamma"], params.biases["ln1_beta"]
-        )
+        x_norm1 = TransformerBlock._layernorm(input_tensor, params.weights["ln1_gamma"], params.biases["ln1_beta"])
 
         inv_sqrt2 = jnp.float32(1.0 / jnp.sqrt(2.0))
 
@@ -344,9 +339,7 @@ class TransformerBlock(NodeBase):
             # Position-dependent: count attended keys per query position.
             # For a causal mask this gives [1, 2, ..., seq_len].
             # mask shape: (batch, 1, seq_len, seq_len)
-            eff_ctx = jnp.maximum(
-                jnp.sum(mask[0, 0] != 0, axis=-1, dtype=jnp.float32), 1.0
-            )
+            eff_ctx = jnp.maximum(jnp.sum(mask[0, 0] != 0, axis=-1, dtype=jnp.float32), 1.0)
             attn_output = attn_output * jnp.sqrt(eff_ctx)[None, :, None]
         else:
             # Full (non-causal) attention: all positions attend to all keys.
@@ -357,18 +350,12 @@ class TransformerBlock(NodeBase):
         x_res1 = inv_sqrt2 * (input_tensor + attn_output)
 
         # LayerNorm 2
-        x_norm2 = TransformerBlock._layernorm(
-            x_res1, params.weights["ln2_gamma"], params.biases["ln2_beta"]
-        )
+        x_norm2 = TransformerBlock._layernorm(x_res1, params.weights["ln2_gamma"], params.biases["ln2_beta"])
 
         # Feedforward Network
-        ff_intermediate = (
-            jnp.matmul(x_norm2, params.weights["W_ff1"]) + params.biases["b_ff1"]
-        )
+        ff_intermediate = jnp.matmul(x_norm2, params.weights["W_ff1"]) + params.biases["b_ff1"]
         ff_activated = activation_fn(ff_intermediate)
-        ff_output = (
-            jnp.matmul(ff_activated, params.weights["W_ff2"]) + params.biases["b_ff2"]
-        )
+        ff_output = jnp.matmul(ff_activated, params.weights["W_ff2"]) + params.biases["b_ff2"]
 
         # Residual connection 2
         z_mu = inv_sqrt2 * (x_res1 + ff_output)
@@ -399,9 +386,9 @@ class TransformerBlock(NodeBase):
         node_class = node_info.node_class
 
         # Pure autodiff (inputs already scaled by callsite)
-        (total_energy, new_state), params_grad = jax.value_and_grad(
-            node_class.forward, argnums=0, has_aux=True
-        )(params, inputs, state, node_info)
+        (total_energy, new_state), params_grad = jax.value_and_grad(node_class.forward, argnums=0, has_aux=True)(
+            params, inputs, state, node_info
+        )
 
         # LayerNorm compensation: LN(a*x) = LN(x) absorbs muPC forward
         # scaling, so dE/dW is independent of a — making weight gradients
@@ -415,16 +402,12 @@ class TransformerBlock(NodeBase):
                     break
             if a != 1.0:
                 scaled_weights = {k: g * a for k, g in params_grad.weights.items()}
-                params_grad = NodeParams(
-                    weights=scaled_weights, biases=params_grad.biases
-                )
+                params_grad = NodeParams(weights=scaled_weights, biases=params_grad.biases)
 
         return new_state, params_grad
 
     @staticmethod
-    def _layernorm(
-        x: jnp.ndarray, gamma: jnp.ndarray, beta: jnp.ndarray, eps: float = 1e-5
-    ) -> jnp.ndarray:
+    def _layernorm(x: jnp.ndarray, gamma: jnp.ndarray, beta: jnp.ndarray, eps: float = 1e-5) -> jnp.ndarray:
         """Layer Normalization implementation."""
         mean = jnp.mean(x, axis=-1, keepdims=True)
         variance = jnp.var(x, axis=-1, keepdims=True)
@@ -484,9 +467,7 @@ class TransformerBlock(NodeBase):
         attn_output = jnp.matmul(attn_matrix, V)
 
         # Reshape back: (batch, seq, embed_dim)
-        attn_output = attn_output.transpose(0, 2, 1, 3).reshape(
-            batch_size, seq_len, embed_dim
-        )
+        attn_output = attn_output.transpose(0, 2, 1, 3).reshape(batch_size, seq_len, embed_dim)
 
         # Output projection
         pre_activation = jnp.matmul(attn_output, W_o) + b_o

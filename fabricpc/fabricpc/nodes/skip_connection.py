@@ -24,15 +24,16 @@ Example — a residual block in graph form::
 
 from __future__ import annotations
 
-from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
 
-from fabricpc.nodes.base import NodeBase, SlotSpec
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
 from fabricpc.core.activations import IdentityActivation
 from fabricpc.core.energy import GaussianEnergy
 from fabricpc.core.initializers import NormalInitializer
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
+from fabricpc.nodes.base import NodeBase, SlotSpec
 
 if TYPE_CHECKING:
     from fabricpc.core.activations import ActivationBase

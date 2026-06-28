@@ -22,21 +22,18 @@ import time
 
 import jax
 import jax.numpy as jnp
-from fabricpc.utils.data.dataloader import MnistLoader
-
-from fabricpc.nodes import Linear, IdentityNode
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params, FeedforwardStateInit
+import optax
 from fabricpc.core.activations import (
-    IdentityActivation,
     SigmoidActivation,
     SoftmaxActivation,
 )
-from fabricpc.core.energy import GaussianEnergy, CrossEntropyEnergy
-from fabricpc.core.initializers import KaimingInitializer
+from fabricpc.core.energy import CrossEntropyEnergy, GaussianEnergy
 from fabricpc.core.inference import InferenceSGD
-import optax
+from fabricpc.core.initializers import KaimingInitializer
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import FeedforwardStateInit, initialize_params
+from fabricpc.nodes import IdentityNode, Linear
 from fabricpc.training import evaluate_pcn
 
 # Import dashboarding utilities
@@ -44,10 +41,11 @@ from fabricpc.utils.dashboarding import (
     AimExperimentTracker,
     TrackingConfig,
     is_aim_available,
+    summarize_inference_convergence,
     train_step_with_history,
     unstack_inference_history,
-    summarize_inference_convergence,
 )
+from fabricpc.utils.data.dataloader import MnistLoader
 
 # Check if Aim is available
 if not is_aim_available():
@@ -122,12 +120,8 @@ print(f"{len(structure.nodes)} nodes, {num_params:,} parameters")
 
 # --- Data ---
 
-train_loader = MnistLoader(
-    "train", batch_size=batch_size, tensor_format="flat", shuffle=True, seed=42
-)
-test_loader = MnistLoader(
-    "test", batch_size=batch_size, tensor_format="flat", shuffle=False
-)
+train_loader = MnistLoader("train", batch_size=batch_size, tensor_format="flat", shuffle=True, seed=42)
+test_loader = MnistLoader("test", batch_size=batch_size, tensor_format="flat", shuffle=False)
 
 # --- Aim Tracking Setup ---
 
@@ -150,9 +144,7 @@ if TRACKING_ENABLED:
         {
             "model_config": {
                 "num_layers": len(structure.nodes),
-                "layer_sizes": [
-                    structure.nodes[n].node_info.shape for n in structure.node_order
-                ],
+                "layer_sizes": [structure.nodes[n].node_info.shape for n in structure.node_order],
                 "activation": "sigmoid/softmax",
                 "energy_type": "gaussian/cross_entropy",
             },
@@ -204,23 +196,17 @@ for epoch in range(num_epochs):
             params, opt_state, batch, all_rng_keys[epoch, batch_idx]
         )
 
-        inference_history = unstack_inference_history(
-            stacked_history, collect_every=INFERENCE_COLLECT_EVERY
-        )
+        inference_history = unstack_inference_history(stacked_history, collect_every=INFERENCE_COLLECT_EVERY)
 
         normalized_energy = float(energy) / batch_size
         epoch_energies.append(normalized_energy)
 
         if tracker is not None:
             tracker.track_batch_energy(normalized_energy, epoch=epoch, batch=batch_idx)
-            tracker.track_batch_energy_per_node(
-                final_state, structure, epoch=epoch, batch=batch_idx
-            )
+            tracker.track_batch_energy_per_node(final_state, structure, epoch=epoch, batch=batch_idx)
 
             if batch_idx % tracker.config.tracking_every_n_batches == 0:
-                tracker.track_state(
-                    final_state, epoch=epoch, batch=batch_idx, infer_step=0
-                )
+                tracker.track_state(final_state, epoch=epoch, batch=batch_idx, infer_step=0)
 
             if batch_idx % tracker.config.tracking_every_n_batches == 0:
                 for step_idx, step_metrics in enumerate(inference_history):
@@ -251,14 +237,12 @@ for epoch in range(num_epochs):
 
         n_batch_update = 100
         if (batch_idx + 1) % n_batch_update == 0:
-            avg_energy = sum(epoch_energies[-n_batch_update:]) / len(
-                epoch_energies[-n_batch_update:]
-            )
+            avg_energy = sum(epoch_energies[-n_batch_update:]) / len(epoch_energies[-n_batch_update:])
             convergence = summarize_inference_convergence(inference_history)
             h1_final = convergence.get("h1", {}).get("final_energy", 0)
             print(
-                f"  Epoch {epoch+1}/{num_epochs}, "
-                f"Batch {batch_idx+1}/{len(train_loader)}, "
+                f"  Epoch {epoch + 1}/{num_epochs}, "
+                f"Batch {batch_idx + 1}/{len(train_loader)}, "
                 f"energy: {avg_energy:.4f}, "
                 f"h1 Energy: {h1_final:.4f}"
             )
@@ -286,7 +270,7 @@ for epoch in range(num_epochs):
         print(f"  * New best accuracy: {accuracy:.2f}%")
 
     print(
-        f"  Epoch {epoch+1}/{num_epochs} - "
+        f"  Epoch {epoch + 1}/{num_epochs} - "
         f"energy: {avg_energy:.4f}, "
         f"Accuracy: {accuracy:.2f}%, "
         f"Time: {epoch_time:.1f}s"

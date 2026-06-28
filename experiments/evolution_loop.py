@@ -12,13 +12,13 @@ Usage:
 
 import argparse
 import json
-import math
 import os
 import random
 import sys
 from pathlib import Path
 
-from fabricpc_extensions.ansi import C, banner, header, ok, info, warn, err, star, dim, metric, line
+from fabricpc_extensions.ansi import C, banner, header, line, metric
+
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
 import jax
@@ -61,26 +61,27 @@ GOAL = 2
 
 def build_agent(genome: PCGenome, rng_key: jax.Array):
     """Build a PCAgent from a genome specification."""
-    activation_cls = (
-        TanhActivation() if genome.activation == "tanh" else IdentityActivation()
-    )
+    activation_cls = TanhActivation() if genome.activation == "tanh" else IdentityActivation()
     eta_infer = genome.eta_infer
     eta_learn = genome.eta_learn
     hidden_dim = genome.hidden_dim
     infer_steps = 20
 
     obs_in = Linear(
-        shape=(OBS_DIM,), name="obs_in",
+        shape=(OBS_DIM,),
+        name="obs_in",
         activation=IdentityActivation(),
         energy=GaussianEnergy(),
     )
     hidden = Linear(
-        shape=(hidden_dim,), name="hidden",
+        shape=(hidden_dim,),
+        name="hidden",
         activation=activation_cls,
         energy=GaussianEnergy(),
     )
     obs_out = Linear(
-        shape=(OBS_DIM,), name="obs_out",
+        shape=(OBS_DIM,),
+        name="obs_out",
         activation=IdentityActivation(),
         energy=GaussianEnergy(),
     )
@@ -92,7 +93,8 @@ def build_agent(genome: PCGenome, rng_key: jax.Array):
 
     if genome.n_hidden_layers == 2:
         hidden2 = Linear(
-            shape=(hidden_dim,), name="hidden2",
+            shape=(hidden_dim,),
+            name="hidden2",
             activation=activation_cls,
             energy=GaussianEnergy(),
         )
@@ -176,7 +178,11 @@ def fitness_function(genome: PCGenome) -> float:
             }
             sk, key = jax.random.split(key)
             init_state = initialize_graph_state(
-                structure, batch_size, sk, clamps=clamps, params=params,
+                structure,
+                batch_size,
+                sk,
+                clamps=clamps,
+                params=params,
             )
             final_state = run_inference(params, init_state, clamps, structure)
             energy = 0.0
@@ -226,12 +232,24 @@ def _observe(grid: np.ndarray, pos: tuple) -> np.ndarray:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="FabricEmergenceLab — Evolution Loop (Phase 6)")
-    parser.add_argument("--pop-size", type=int, default=int(os.environ.get("POP_SIZE", "8")),
-                        help="Population size (default: 8, env: POP_SIZE)")
-    parser.add_argument("--generations", type=int, default=int(os.environ.get("GENERATIONS", "5")),
-                        help="Number of generations (default: 5, env: GENERATIONS)")
-    parser.add_argument("--eval-episodes", type=int, default=int(os.environ.get("EVAL_EPISODES", "1")),
-                        help="Episodes per evaluation (default: 1, env: EVAL_EPISODES)")
+    parser.add_argument(
+        "--pop-size",
+        type=int,
+        default=int(os.environ.get("POP_SIZE", "8")),
+        help="Population size (default: 8, env: POP_SIZE)",
+    )
+    parser.add_argument(
+        "--generations",
+        type=int,
+        default=int(os.environ.get("GENERATIONS", "5")),
+        help="Number of generations (default: 5, env: GENERATIONS)",
+    )
+    parser.add_argument(
+        "--eval-episodes",
+        type=int,
+        default=int(os.environ.get("EVAL_EPISODES", "1")),
+        help="Episodes per evaluation (default: 1, env: EVAL_EPISODES)",
+    )
     return parser.parse_args()
 
 

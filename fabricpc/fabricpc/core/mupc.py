@@ -71,8 +71,8 @@ Usage:
 
 import math
 import warnings
-from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 
 @dataclass(frozen=True)
@@ -244,9 +244,7 @@ def compute_mupc_scalings(
         Terminal output nodes (out_degree=0) get None unless include_output=True.
     """
     # Detect output nodes (out_degree=0).
-    output_nodes = {
-        name for name, node in nodes.items() if node.node_info.out_degree == 0
-    }
+    output_nodes = {name for name, node in nodes.items() if node.node_info.out_degree == 0}
 
     # Use topological order if provided, otherwise iterate dict order
     iteration_order = node_order if node_order is not None else list(nodes.keys())

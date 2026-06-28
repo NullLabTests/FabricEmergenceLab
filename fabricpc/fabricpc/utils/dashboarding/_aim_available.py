@@ -43,10 +43,7 @@ def get_aim() -> Any:
     global _aim_module
     if _aim_module is None:
         if not is_aim_available():
-            raise ImportError(
-                "Aim is not installed. Install with: pip install fabricpc[viz] "
-                "or pip install aim"
-            )
+            raise ImportError("Aim is not installed. Install with: pip install fabricpc[viz] or pip install aim")
         import aim
 
         _aim_module = aim

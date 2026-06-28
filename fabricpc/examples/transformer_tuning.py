@@ -15,10 +15,10 @@ set_jax_flags_before_importing_jax()
 import jax
 import optax
 import optuna
-from fabricpc.graph_initialization import initialize_params
 from fabricpc.core.inference import InferenceSGD
+from fabricpc.graph_initialization import initialize_params
 from fabricpc.nodes.transformer_v2 import create_deep_transformer
-from fabricpc.training import train_pcn, evaluate_transformer
+from fabricpc.training import evaluate_transformer, train_pcn
 from fabricpc.tuning.bayesian_tuner import BayesianTuner
 from fabricpc.utils.data import CharDataLoader
 
@@ -39,9 +39,7 @@ def trial_model(config, rng_key):
     weight_init = {"type": "normal", "std": weight_init_std}
 
     if embed_dim % num_heads != 0:
-        raise optuna.TrialPruned(
-            f"embed_dim={embed_dim} not divisible by num_heads={num_heads}"
-        )
+        raise optuna.TrialPruned(f"embed_dim={embed_dim} not divisible by num_heads={num_heads}")
 
     inference = InferenceSGD(
         eta_infer=config.get("eta_infer", 0.05),
@@ -118,9 +116,7 @@ def multi_gpu_train_eval(params, structure, train_loader, val_loader, config, rn
         use_tqdm=False,
     )
 
-    metrics = evaluate_transformer(
-        trained_params, structure, val_loader, config, eval_key
-    )
+    metrics = evaluate_transformer(trained_params, structure, val_loader, config, eval_key)
 
     alpha = 0.5
     energy = metrics.get("energy", 0.0)
@@ -154,10 +150,7 @@ if __name__ == "__main__":
     )
     vocab_size = train_loader.vocab_size
 
-    print(
-        f"Tuning subset: {train_loader.num_sequences} train sequences, "
-        f"{val_loader.num_sequences} val sequences"
-    )
+    print(f"Tuning subset: {train_loader.num_sequences} train sequences, {val_loader.num_sequences} val sequences")
 
     base_config = {
         "seq_len": seq_len,

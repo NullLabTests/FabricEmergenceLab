@@ -4,29 +4,29 @@ Backprop trainers are provided for performance comparison to PC and as a referen
 """
 
 from fabricpc.training.train import (
-    train_step,
-    train_pcn,
     evaluate_pcn,
     evaluate_transformer,
+    get_graph_param_gradient,
     replicate_params,
     shard_batch,
-    get_graph_param_gradient,
+    train_pcn,
+    train_step,
 )
 from fabricpc.training.train_autoregressive import (
-    train_autoregressive,
-    train_step_autoregressive,
     evaluate_autoregressive,
     generate_autoregressive,
+    train_autoregressive,
+    train_step_autoregressive,
 )
 from fabricpc.training.train_backprop import (
     compute_loss,
-    train_step_backprop,
-    train_backprop,
     compute_loss_autoregressive,
-    train_step_backprop_autoregressive,
-    train_backprop_autoregressive,
     evaluate_backprop,
     evaluate_backprop_autoregressive,
+    train_backprop,
+    train_backprop_autoregressive,
+    train_step_backprop,
+    train_step_backprop_autoregressive,
 )
 
 # Backward-compatibility aliases (deprecated, will be removed)

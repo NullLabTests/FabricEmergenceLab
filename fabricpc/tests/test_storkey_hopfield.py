@@ -1,22 +1,21 @@
 """Tests for StorkeyHopfield associative memory node."""
 
-import pytest
 import jax
 import jax.numpy as jnp
-
-from fabricpc.nodes import Linear, IdentityNode, StorkeyHopfield
+import optax
+import pytest
+from conftest import with_inference
+from fabricpc.core.activations import SigmoidActivation, SoftmaxActivation
+from fabricpc.core.energy import CrossEntropyEnergy
+from fabricpc.core.inference import InferenceSGD, run_inference
+from fabricpc.core.initializers import NormalInitializer, XavierInitializer
+from fabricpc.core.learning import compute_local_weight_gradients
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
-from fabricpc.core.learning import compute_local_weight_gradients
-from fabricpc.core.inference import InferenceSGD, run_inference
-from fabricpc.core.activations import SigmoidActivation, SoftmaxActivation
-from fabricpc.core.energy import CrossEntropyEnergy
-from fabricpc.core.initializers import XavierInitializer, NormalInitializer
+from fabricpc.nodes import IdentityNode, Linear, StorkeyHopfield
 from fabricpc.training import train_step
-from conftest import with_inference
-import optax
 
 # =========================================================================
 # Fixtures
@@ -145,9 +144,7 @@ class TestEnergy:
             if structure.nodes[n].node_info.in_degree > 0
         )
 
-        assert (
-            energy_many <= energy_few + 1e-3
-        ), f"Energy did not decrease: {energy_few} -> {energy_many}"
+        assert energy_many <= energy_few + 1e-3, f"Energy did not decrease: {energy_few} -> {energy_many}"
 
 
 # =========================================================================
@@ -194,9 +191,7 @@ class TestGradients:
 
         # W gradient is nonzero
         w_key = list(hop_grads.weights.keys())[0]
-        assert jnp.any(
-            hop_grads.weights[w_key] != 0.0
-        ), "Hopfield W gradient is all zeros"
+        assert jnp.any(hop_grads.weights[w_key] != 0.0), "Hopfield W gradient is all zeros"
 
     def test_hopfield_strength_gradient(self, rng_key):
         """Learnable hopfield_strength receives a finite gradient."""
@@ -238,24 +233,18 @@ class TestSymmetryAndConfig:
         W = jax.random.normal(rng_key, (D, D))
 
         # Symmetry
-        W_sym = StorkeyHopfield._prepare_W(
-            W, {"enforce_symmetry": True, "zero_diagonal": False}
-        )
+        W_sym = StorkeyHopfield._prepare_W(W, {"enforce_symmetry": True, "zero_diagonal": False})
         assert jnp.allclose(W_sym, W_sym.T, atol=1e-6)
 
         # Zero diagonal
-        W_zd = StorkeyHopfield._prepare_W(
-            W, {"enforce_symmetry": False, "zero_diagonal": True}
-        )
+        W_zd = StorkeyHopfield._prepare_W(W, {"enforce_symmetry": False, "zero_diagonal": True})
         assert jnp.allclose(jnp.diag(W_zd), 0.0, atol=1e-6)
 
     def test_config_options(self, rng_key):
         """Fixed hopfield_strength excluded from biases; use_bias=False omits bias."""
         D = 16
         input_node = IdentityNode(shape=(D,), name="input")
-        hopfield = StorkeyHopfield(
-            shape=(D,), name="hopfield", hopfield_strength=1.0, use_bias=False
-        )
+        hopfield = StorkeyHopfield(shape=(D,), name="hopfield", hopfield_strength=1.0, use_bias=False)
         output = Linear(shape=(5,), activation=SigmoidActivation(), name="output")
 
         structure = graph(
@@ -323,17 +312,13 @@ class TestIntegration:
 
         rng_key, x_key, train_key = jax.random.split(rng_key, 3)
         x = jax.random.normal(x_key, (batch_size, 32))
-        y = jax.nn.one_hot(
-            jax.random.randint(x_key, (batch_size,), 0, n_classes), n_classes
-        )
+        y = jax.nn.one_hot(jax.random.randint(x_key, (batch_size,), 0, n_classes), n_classes)
         batch = {"input": x, "class": y}
 
         optimizer = optax.adam(1e-3)
         opt_state = optimizer.init(params)
 
-        new_params, opt_state, energy, _ = train_step(
-            params, opt_state, batch, structure, optimizer, train_key
-        )
+        new_params, opt_state, energy, _ = train_step(params, opt_state, batch, structure, optimizer, train_key)
         assert jnp.isfinite(energy)
         # Params should have changed
         edge_key = list(params.nodes["hopfield"].weights.keys())[0]

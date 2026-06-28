@@ -10,15 +10,16 @@ When multiple inputs are connected, they are summed together.
 
 from __future__ import annotations
 
-from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
 
-from fabricpc.nodes.base import NodeBase, SlotSpec
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
 from fabricpc.core.activations import IdentityActivation
 from fabricpc.core.energy import GaussianEnergy
 from fabricpc.core.initializers import NormalInitializer
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
+from fabricpc.nodes.base import NodeBase, SlotSpec
 
 if TYPE_CHECKING:
     from fabricpc.core.activations import ActivationBase
@@ -139,9 +140,7 @@ class IdentityNode(NodeBase):
             else:
                 z_mu = z_mu + x
 
-        z_mu = (
-            z_mu * node_info.node_config["scale"]
-        )  # Apply fixed scaling factor (default is 1.0)
+        z_mu = z_mu * node_info.node_config["scale"]  # Apply fixed scaling factor (default is 1.0)
 
         # For identity node, pre_activation equals z_mu (no activation transform)
         pre_activation = z_mu

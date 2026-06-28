@@ -14,15 +14,16 @@ The training loop supports both:
 - Last-token prediction (only predict final token, for efficiency)
 """
 
-from typing import Dict, Tuple, Any, List, Optional, Callable, cast
 import math
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+
 import jax
 import jax.numpy as jnp
 import optax
 
-from fabricpc.core.types import GraphParams, GraphState, GraphStructure
 from fabricpc.core.inference import run_inference
 from fabricpc.core.learning import compute_local_weight_gradients
+from fabricpc.core.types import GraphParams, GraphState, GraphStructure
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
 
 
@@ -159,9 +160,7 @@ def train_step_autoregressive(
     params = cast(GraphParams, optax.apply_updates(params, updates))
 
     # Compute output cross-entropy loss for perplexity metric - not used for gradients
-    output_cross_entropy = compute_loss(
-        final_state, batch["y"], structure.task_map["y"], loss_type="cross_entropy"
-    )
+    output_cross_entropy = compute_loss(final_state, batch["y"], structure.task_map["y"], loss_type="cross_entropy")
 
     return (
         params,
@@ -216,9 +215,7 @@ def train_autoregressive(
 
     # JIT compile training step
     jit_train_step = jax.jit(
-        lambda p, o, b, k: train_step_autoregressive(
-            p, o, b, structure, optimizer, k, use_causal_mask
-        )
+        lambda p, o, b, k: train_step_autoregressive(p, o, b, structure, optimizer, k, use_causal_mask)
     )
 
     iter_results = []
@@ -262,9 +259,7 @@ def train_autoregressive(
                 raise ValueError(f"Unsupported batch format: {type(batch_data)}")
 
             # Training step
-            params, opt_state, energy, ce_loss, _ = jit_train_step(
-                params, opt_state, batch, batch_keys[batch_idx]
-            )
+            params, opt_state, energy, ce_loss, _ = jit_train_step(params, opt_state, batch, batch_keys[batch_idx])
 
             epoch_energy += energy
             epoch_ce_loss += ce_loss
@@ -281,9 +276,7 @@ def train_autoregressive(
 
         # Epoch callback
         if epoch_callback is not None:
-            epoch_results.append(
-                epoch_callback(epoch_idx, params, structure, config, rng_key)
-            )
+            epoch_results.append(epoch_callback(epoch_idx, params, structure, config, rng_key))
         else:
             epoch_results.append(None)
 
@@ -371,9 +364,7 @@ def _generation_step(
     top_k_logits, top_k_indices = jax.lax.top_k(logits, effective_top_k)
     # Set non-top-k logits to -inf
     neg_inf_mask = jnp.full_like(logits, float("-inf"))
-    logits = neg_inf_mask.at[jnp.arange(batch_size)[:, None], top_k_indices].set(
-        top_k_logits
-    )
+    logits = neg_inf_mask.at[jnp.arange(batch_size)[:, None], top_k_indices].set(top_k_logits)
 
     # Apply top-p (nucleus) filtering
     if top_p is not None:
@@ -384,9 +375,7 @@ def _generation_step(
         # Find cutoff
         cutoff_mask = cumsum_probs > top_p
         # Shift mask to keep at least one token
-        cutoff_mask = jnp.concatenate(
-            [jnp.zeros((batch_size, 1), dtype=bool), cutoff_mask[:, :-1]], axis=-1
-        )
+        cutoff_mask = jnp.concatenate([jnp.zeros((batch_size, 1), dtype=bool), cutoff_mask[:, :-1]], axis=-1)
         sorted_logits = jnp.where(cutoff_mask, float("-inf"), sorted_logits)
         # Unsort
         unsort_indices = jnp.argsort(sorted_indices, axis=-1)
@@ -485,9 +474,7 @@ def generate_autoregressive(
 
         # Run the generation loop
         init_carry = (context, output_buffer, rng)
-        (_, final_output_buffer, _), _ = jax.lax.scan(
-            scan_fn, init_carry, jnp.arange(max_new_tokens)
-        )
+        (_, final_output_buffer, _), _ = jax.lax.scan(scan_fn, init_carry, jnp.arange(max_new_tokens))
 
         return final_output_buffer
 
@@ -600,9 +587,7 @@ def evaluate_autoregressive(
     batch_keys = jax.random.split(rng_key, num_batches_total)
 
     # JIT compile the evaluation step
-    jit_eval_step = jax.jit(
-        lambda p, b, k: _eval_step_autoregressive(p, structure, b, k, use_causal_mask)
-    )
+    jit_eval_step = jax.jit(lambda p, b, k: _eval_step_autoregressive(p, structure, b, k, use_causal_mask))
 
     total_loss = 0.0
     total_correct = 0
@@ -635,17 +620,13 @@ def evaluate_autoregressive(
                 f"  [DEBUG] per-token CE loss: min={float(jnp.min(per_token_loss)):.4f}, max={float(jnp.max(per_token_loss)):.4f}, mean={float(jnp.mean(per_token_loss)):.4f}"
             )
 
-            token_intrinsic_perplexity = jnp.exp(
-                -jnp.sum(predictions * log_preds, axis=-1)
-            )  # (batch, seq_len)
+            token_intrinsic_perplexity = jnp.exp(-jnp.sum(predictions * log_preds, axis=-1))  # (batch, seq_len)
             print(
                 f"  [DEBUG] per-token intrinsic perplexity: min={float(jnp.min(token_intrinsic_perplexity)):.4f}, max={float(jnp.max(token_intrinsic_perplexity)):.4f}, mean={float(jnp.mean(token_intrinsic_perplexity)):.4f}"
             )
 
             # Check if there are extreme values
-            correct_probs = jnp.sum(
-                tgt * predictions, axis=-1
-            )  # prob assigned to correct class
+            correct_probs = jnp.sum(tgt * predictions, axis=-1)  # prob assigned to correct class
             print(
                 f"  [DEBUG] prob of correct token: min={float(jnp.min(correct_probs)):.6f}, max={float(jnp.max(correct_probs)):.6f}, mean={float(jnp.mean(correct_probs)):.6f}"
             )

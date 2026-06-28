@@ -33,7 +33,7 @@ Initializers are instantiated with their parameters:
 
 import types
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -61,9 +61,7 @@ class InitializerBase(ABC):
 
     @staticmethod
     @abstractmethod
-    def initialize(
-        key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def initialize(key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Initialize array with specified shape.
 
@@ -94,9 +92,7 @@ class ZerosInitializer(InitializerBase):
         super().__init__()
 
     @staticmethod
-    def initialize(
-        key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def initialize(key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None) -> jnp.ndarray:
         """Return array of zeros."""
         return jnp.zeros(shape)
 
@@ -112,9 +108,7 @@ class OnesInitializer(InitializerBase):
         super().__init__(gain=gain)
 
     @staticmethod
-    def initialize(
-        key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def initialize(key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None) -> jnp.ndarray:
         config = config or {}
         gain = config.get("gain", 1.0)
         """Return array of ones."""
@@ -136,9 +130,7 @@ class NormalInitializer(InitializerBase):
         super().__init__(mean=mean, std=std, gain=gain)
 
     @staticmethod
-    def initialize(
-        key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def initialize(key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None) -> jnp.ndarray:
         """Initialize from normal distribution: mean + std * N(0, 1)."""
         config = config or {}
         mean = config.get("mean", 0.0)
@@ -162,9 +154,7 @@ class UniformInitializer(InitializerBase):
         super().__init__(**{"min": min_val, "max": max_val})
 
     @staticmethod
-    def initialize(
-        key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def initialize(key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None) -> jnp.ndarray:
         """Initialize from uniform distribution: U(min, max)."""
         min_val = config.get("min", -0.1) if config else -0.1
         max_val = config.get("max", 0.1) if config else 0.1
@@ -191,9 +181,7 @@ class XavierInitializer(InitializerBase):
         super().__init__(distribution=distribution, gain=gain)
 
     @staticmethod
-    def initialize(
-        key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def initialize(key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None) -> jnp.ndarray:
         """Initialize using Xavier/Glorot scheme."""
         config = config or {}
         distribution = config.get("distribution", "normal")
@@ -247,9 +235,7 @@ class KaimingInitializer(InitializerBase):
         )
 
     @staticmethod
-    def initialize(
-        key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def initialize(key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None) -> jnp.ndarray:
         """Initialize using Kaiming/He scheme."""
         config = config or {}
         mode = config.get("mode", "fan_in")
@@ -297,9 +283,7 @@ class MuPCInitializer(InitializerBase):
         super().__init__(gain=gain)
 
     @staticmethod
-    def initialize(
-        key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def initialize(key: jax.Array, shape: Tuple[int, ...], config: Dict[str, Any] = None) -> jnp.ndarray:
         """Initialize from standard normal: gain * N(0, 1)."""
         config = config or {}
         gain = config.get("gain", 1.0)
@@ -311,9 +295,7 @@ class MuPCInitializer(InitializerBase):
 # =============================================================================
 
 
-def initialize(
-    key: jax.Array, shape: Tuple[int, ...], initializer: InitializerBase
-) -> jnp.ndarray:
+def initialize(key: jax.Array, shape: Tuple[int, ...], initializer: InitializerBase) -> jnp.ndarray:
     """
     Initialize array using the specified initializer.
 

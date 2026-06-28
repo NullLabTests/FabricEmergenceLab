@@ -79,11 +79,7 @@ class GridWorldAdapter(EnvironmentAdapter):
         x, y = self._world.agent_pos
         nx, ny = x + dx, y + dy
         self._world.grid[y, x] = EMPTY
-        if (
-            0 <= nx < self.size
-            and 0 <= ny < self.size
-            and self._world.grid[ny, nx] != WALL
-        ):
+        if 0 <= nx < self.size and 0 <= ny < self.size and self._world.grid[ny, nx] != WALL:
             self._world.agent_pos = (nx, ny)
         reward = 0.0
         done = False

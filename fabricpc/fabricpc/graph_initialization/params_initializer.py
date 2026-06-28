@@ -1,9 +1,9 @@
-from typing import Dict
 import jax
+
 from fabricpc.core.types import (
-    NodeParams,
     GraphParams,
     GraphStructure,
+    NodeParams,
 )
 
 

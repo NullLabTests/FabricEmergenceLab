@@ -115,14 +115,16 @@ class SharedMemory:
         for sim, idx in scores[:top_k]:
             self.access_counts[idx] += 1
             self.successful_reads += 1
-            results.append({
-                "key": self.keys[idx],
-                "value": self.values[idx],
-                "agent_id": self.agent_ids[idx],
-                "score": round(sim, 4),
-                "meta": self.metadata[idx],
-                "access_count": self.access_counts[idx],
-            })
+            results.append(
+                {
+                    "key": self.keys[idx],
+                    "value": self.values[idx],
+                    "agent_id": self.agent_ids[idx],
+                    "score": round(sim, 4),
+                    "meta": self.metadata[idx],
+                    "access_count": self.access_counts[idx],
+                }
+            )
 
         return results
 

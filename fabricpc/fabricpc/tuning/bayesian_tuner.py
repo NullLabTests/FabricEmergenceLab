@@ -1,14 +1,14 @@
-import jax
-import jax.numpy as jnp
-import optuna
 import os
 import random
-import numpy as np
-import json
 import time
-from typing import Callable, Any, Dict, Tuple, Optional, Union
-from fabricpc.training.train import train_pcn, evaluate_pcn
+from typing import Any, Callable, Dict, Optional, Tuple, Union
+
+import jax
+import numpy as np
+import optuna
+
 from fabricpc.core.types import GraphParams, GraphStructure
+from fabricpc.training.train import evaluate_pcn, train_pcn
 
 
 def set_seed(seed: int = 42):
@@ -29,9 +29,7 @@ class BayesianTuner:
         self,
         train_loader: Any,
         val_loader: Any,
-        trial_model: Callable[
-            [Dict[str, Any], jax.Array], Tuple[GraphParams, GraphStructure]
-        ],
+        trial_model: Callable[[Dict[str, Any], jax.Array], Tuple[GraphParams, GraphStructure]],
         base_config: Dict[str, Any],
         metric: str = "combined_loss",
         study_name: str = "fabricpc_tuning",
@@ -56,17 +54,13 @@ class BayesianTuner:
             load_if_exists=True,
         )
 
-    def _suggest_from_config(
-        self, trial: optuna.Trial, search_space: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _suggest_from_config(self, trial: optuna.Trial, search_space: Dict[str, Any]) -> Dict[str, Any]:
         """Generate suggestions based on a dictionary configuration."""
         params = {}
         for name, config in search_space.items():
             param_type = config.get("type")
             if param_type == "float":
-                params[name] = trial.suggest_float(
-                    name, config["low"], config["high"], log=config.get("log", False)
-                )
+                params[name] = trial.suggest_float(name, config["low"], config["high"], log=config.get("log", False))
             elif param_type == "int":
                 params[name] = trial.suggest_int(
                     name,
@@ -129,7 +123,6 @@ class BayesianTuner:
 
         os.makedirs(os.path.dirname(self.log_file) or ".", exist_ok=True)
         with open(self.log_file, "a") as f:
-
             # Header
             if header_needed:
                 f.write(
@@ -190,9 +183,7 @@ class BayesianTuner:
 
                 if isinstance(result, dict):
                     metrics = result
-                    val_score = metrics.get(
-                        self.metric, metrics.get("loss", float("inf"))
-                    )
+                    val_score = metrics.get(self.metric, metrics.get("loss", float("inf")))
                 else:
                     # Assume it returns the scalar score directly
                     val_score = float(result)

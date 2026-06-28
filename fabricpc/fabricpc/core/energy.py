@@ -37,7 +37,7 @@ Energy functionals are instantiated with their parameters:
 
 import types
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
 import jax.numpy as jnp
 
@@ -82,9 +82,7 @@ class EnergyFunctional(ABC):
 
     @staticmethod
     @abstractmethod
-    def energy(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def energy(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute energy E(z_latent, z_mu).
 
@@ -103,9 +101,7 @@ class EnergyFunctional(ABC):
 
     @staticmethod
     @abstractmethod
-    def grad_latent(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def grad_latent(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute gradient dE/dz_latent (element-wise / diagonal form).
 
@@ -152,9 +148,7 @@ class GaussianEnergy(EnergyFunctional):
         super().__init__(precision=precision)
 
     @staticmethod
-    def energy(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def energy(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute Gaussian energy: E = (precision/2) * ||z - mu||^2
 
@@ -167,9 +161,7 @@ class GaussianEnergy(EnergyFunctional):
         return 0.5 * precision * jnp.sum(diff**2, axis=axes_to_sum)
 
     @staticmethod
-    def grad_latent(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def grad_latent(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute gradient: dE/dz = precision * (z - mu)
         """
@@ -194,9 +186,7 @@ class BernoulliEnergy(EnergyFunctional):
         super().__init__(eps=eps)
 
     @staticmethod
-    def energy(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def energy(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute Bernoulli (BCE) energy: E = -sum[z*log(mu) + (1-z)*log(1-mu)]
         """
@@ -210,9 +200,7 @@ class BernoulliEnergy(EnergyFunctional):
         return jnp.sum(bce, axis=axes_to_sum)
 
     @staticmethod
-    def grad_latent(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def grad_latent(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute gradient: dE/dz = -log(mu) + log(1-mu) = log((1-mu)/mu)
 
@@ -246,9 +234,7 @@ class CrossEntropyEnergy(EnergyFunctional):
         super().__init__(eps=eps, axis=axis)
 
     @staticmethod
-    def energy(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def energy(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute cross_entropy (CE) energy: E = -sum z_i * log(mu_i)
         """
@@ -262,9 +248,7 @@ class CrossEntropyEnergy(EnergyFunctional):
         return jnp.sum(ce, axis=axes_to_sum)
 
     @staticmethod
-    def grad_latent(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def grad_latent(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute gradient: dE/dz = -log(mu)
 
@@ -294,9 +278,7 @@ class LaplacianEnergy(EnergyFunctional):
         super().__init__(scale=scale)
 
     @staticmethod
-    def energy(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def energy(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute Laplacian energy: E = (1/b) * sum|z - mu|
         """
@@ -307,9 +289,7 @@ class LaplacianEnergy(EnergyFunctional):
         return jnp.sum(diff, axis=axes_to_sum) / scale
 
     @staticmethod
-    def grad_latent(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def grad_latent(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute gradient: dE/dz = (1/b) * sign(z - mu)
         """
@@ -334,9 +314,7 @@ class HuberEnergy(EnergyFunctional):
         super().__init__(delta=delta)
 
     @staticmethod
-    def energy(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def energy(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute Huber energy.
         """
@@ -355,9 +333,7 @@ class HuberEnergy(EnergyFunctional):
         return jnp.sum(huber, axis=axes_to_sum)
 
     @staticmethod
-    def grad_latent(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def grad_latent(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute gradient: clipped to [-delta, delta]
         """
@@ -396,9 +372,7 @@ class KLDivergenceEnergy(EnergyFunctional):
         super().__init__(eps=eps, axis=axis)
 
     @staticmethod
-    def energy(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def energy(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute KL divergence energy: E = sum z * log(z / mu)
 
@@ -423,9 +397,7 @@ class KLDivergenceEnergy(EnergyFunctional):
         return jnp.sum(kl, axis=axes_to_sum)
 
     @staticmethod
-    def grad_latent(
-        z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None
-    ) -> jnp.ndarray:
+    def grad_latent(z_latent: jnp.ndarray, z_mu: jnp.ndarray, config: Dict[str, Any] = None) -> jnp.ndarray:
         """
         Compute gradient: dE/dz = log(z / mu) + 1 = log(z) - log(mu) + 1
 
@@ -452,9 +424,7 @@ class KLDivergenceEnergy(EnergyFunctional):
 # =============================================================================
 
 
-def compute_energy(
-    z_latent: jnp.ndarray, z_mu: jnp.ndarray, energy: EnergyFunctional = None
-) -> jnp.ndarray:
+def compute_energy(z_latent: jnp.ndarray, z_mu: jnp.ndarray, energy: EnergyFunctional = None) -> jnp.ndarray:
     """
     Compute energy using the specified energy functional.
 
@@ -472,9 +442,7 @@ def compute_energy(
     return type(energy).energy(z_latent, z_mu, energy.config)
 
 
-def compute_energy_gradient(
-    z_latent: jnp.ndarray, z_mu: jnp.ndarray, energy: EnergyFunctional = None
-) -> jnp.ndarray:
+def compute_energy_gradient(z_latent: jnp.ndarray, z_mu: jnp.ndarray, energy: EnergyFunctional = None) -> jnp.ndarray:
     """
     Compute energy gradient w.r.t. z_latent.
 

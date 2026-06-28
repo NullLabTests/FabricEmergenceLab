@@ -5,23 +5,19 @@ Tests built-in energy functionals, custom energy creation,
 and integration with graph construction.
 """
 
-import pytest
-import jax
 import jax.numpy as jnp
-
 from fabricpc.core.energy import (
-    EnergyFunctional,
-    GaussianEnergy,
     BernoulliEnergy,
     CrossEntropyEnergy,
-    LaplacianEnergy,
+    EnergyFunctional,
+    GaussianEnergy,
     KLDivergenceEnergy,
+    LaplacianEnergy,
 )
-from fabricpc.nodes import Linear
+from fabricpc.core.inference import InferenceSGD
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
-from fabricpc.core.inference import InferenceSGD
+from fabricpc.nodes import Linear
 
 
 class TestGaussianEnergy:
@@ -116,16 +112,8 @@ class TestKLDivergenceEnergy:
 
         assert energy.shape == (2,)
 
-        expected_0 = (
-            0.7 * jnp.log(0.7 / 0.6)
-            + 0.2 * jnp.log(0.2 / 0.3)
-            + 0.1 * jnp.log(0.1 / 0.1)
-        )
-        expected_1 = (
-            0.3 * jnp.log(0.3 / 0.5)
-            + 0.3 * jnp.log(0.3 / 0.25)
-            + 0.4 * jnp.log(0.4 / 0.25)
-        )
+        expected_0 = 0.7 * jnp.log(0.7 / 0.6) + 0.2 * jnp.log(0.2 / 0.3) + 0.1 * jnp.log(0.1 / 0.1)
+        expected_1 = 0.3 * jnp.log(0.3 / 0.5) + 0.3 * jnp.log(0.3 / 0.25) + 0.4 * jnp.log(0.4 / 0.25)
 
         assert jnp.allclose(energy[0], expected_0, atol=1e-5)
         assert jnp.allclose(energy[1], expected_1, atol=1e-5)

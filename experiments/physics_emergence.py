@@ -24,10 +24,10 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
-from fabricpc_extensions.ansi import C, banner, header, ok, info, warn, err, star, dim, metric, line
+import jax
 import numpy as np
 
-import jax
+from fabricpc_extensions.ansi import C, banner, line, metric
 
 jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
 
@@ -88,7 +88,12 @@ def run_physics_episode(
     prev_obs = obs
 
     print(line())
-    print(C.BOLD + C.CYAN + f"  Episode {episode + 1}/{N_EPISODES}  ({N_AGENTS} agents, physics, {N_OBJECTS} objects)" + C.RESET)
+    print(
+        C.BOLD
+        + C.CYAN
+        + f"  Episode {episode + 1}/{N_EPISODES}  ({N_AGENTS} agents, physics, {N_OBJECTS} objects)"
+        + C.RESET
+    )
     print(line())
 
     for step in range(N_STEPS):
@@ -160,44 +165,84 @@ def run_physics_episode(
     metrics = []
     for i in range(N_AGENTS):
         avg_err = float(np.mean(step_errors[i])) if step_errors[i] else 0.0
-        metrics.append({
-            "episode": episode,
-            "agent_id": i,
-            "avg_prediction_error": round(avg_err, 4),
-            "total_reward": round(total_rewards[i], 2),
-            "goals_reached": goals_reached[i],
-            "unique_cells_visited": len(pos_memory[i]),
-            "total_steps": len(step_errors[i]),
-        })
-        print(f"  {C.GRAY}Agent {i}:{C.RESET} "
-              f"err={C.CYAN}{avg_err:.4f}{C.RESET} "
-              f"reward={C.GREEN}{total_rewards[i]:.1f}{C.RESET} "
-              f"goals={C.PURPLE}{goals_reached[i]}{C.RESET} "
-              f"explored={C.DIM}{len(pos_memory[i])}{C.RESET} cells")
+        metrics.append(
+            {
+                "episode": episode,
+                "agent_id": i,
+                "avg_prediction_error": round(avg_err, 4),
+                "total_reward": round(total_rewards[i], 2),
+                "goals_reached": goals_reached[i],
+                "unique_cells_visited": len(pos_memory[i]),
+                "total_steps": len(step_errors[i]),
+            }
+        )
+        print(
+            f"  {C.GRAY}Agent {i}:{C.RESET} "
+            f"err={C.CYAN}{avg_err:.4f}{C.RESET} "
+            f"reward={C.GREEN}{total_rewards[i]:.1f}{C.RESET} "
+            f"goals={C.PURPLE}{goals_reached[i]}{C.RESET} "
+            f"explored={C.DIM}{len(pos_memory[i])}{C.RESET} cells"
+        )
 
     return metrics
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="FabricEmergenceLab — Physics Emergence (Phase 8.1)")
-    parser.add_argument("--episodes", type=int, default=int(os.environ.get("N_EPISODES", "3")),
-                        help="Number of episodes (default: 3, env: N_EPISODES)")
-    parser.add_argument("--steps", type=int, default=int(os.environ.get("N_STEPS", "300")),
-                        help="Steps per episode (default: 300, env: N_STEPS)")
-    parser.add_argument("--agents", type=int, default=int(os.environ.get("N_AGENTS", "2")),
-                        help="Number of agents (default: 2, env: N_AGENTS)")
-    parser.add_argument("--objects", type=int, default=int(os.environ.get("N_OBJECTS", "2")),
-                        help="Number of physics objects (default: 2, env: N_OBJECTS)")
-    parser.add_argument("--goals", type=int, default=int(os.environ.get("N_GOALS", "1")),
-                        help="Number of goal zones (default: 1, env: N_GOALS)")
-    parser.add_argument("--explore-std", type=float, default=float(os.environ.get("EXPLORE_STD", "30.0")),
-                        help="Exploration noise std (default: 30.0, env: EXPLORE_STD)")
-    parser.add_argument("--hidden-dim", type=int, default=int(os.environ.get("HIDDEN_DIM", "16")),
-                        help="PC network hidden dim (default: 16, env: HIDDEN_DIM)")
-    parser.add_argument("--world-width", type=int, default=int(os.environ.get("WORLD_WIDTH", "400")),
-                        help="World width in pixels (default: 400, env: WORLD_WIDTH)")
-    parser.add_argument("--world-height", type=int, default=int(os.environ.get("WORLD_HEIGHT", "300")),
-                        help="World height in pixels (default: 300, env: WORLD_HEIGHT)")
+    parser.add_argument(
+        "--episodes",
+        type=int,
+        default=int(os.environ.get("N_EPISODES", "3")),
+        help="Number of episodes (default: 3, env: N_EPISODES)",
+    )
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=int(os.environ.get("N_STEPS", "300")),
+        help="Steps per episode (default: 300, env: N_STEPS)",
+    )
+    parser.add_argument(
+        "--agents",
+        type=int,
+        default=int(os.environ.get("N_AGENTS", "2")),
+        help="Number of agents (default: 2, env: N_AGENTS)",
+    )
+    parser.add_argument(
+        "--objects",
+        type=int,
+        default=int(os.environ.get("N_OBJECTS", "2")),
+        help="Number of physics objects (default: 2, env: N_OBJECTS)",
+    )
+    parser.add_argument(
+        "--goals",
+        type=int,
+        default=int(os.environ.get("N_GOALS", "1")),
+        help="Number of goal zones (default: 1, env: N_GOALS)",
+    )
+    parser.add_argument(
+        "--explore-std",
+        type=float,
+        default=float(os.environ.get("EXPLORE_STD", "30.0")),
+        help="Exploration noise std (default: 30.0, env: EXPLORE_STD)",
+    )
+    parser.add_argument(
+        "--hidden-dim",
+        type=int,
+        default=int(os.environ.get("HIDDEN_DIM", "16")),
+        help="PC network hidden dim (default: 16, env: HIDDEN_DIM)",
+    )
+    parser.add_argument(
+        "--world-width",
+        type=int,
+        default=int(os.environ.get("WORLD_WIDTH", "400")),
+        help="World width in pixels (default: 400, env: WORLD_WIDTH)",
+    )
+    parser.add_argument(
+        "--world-height",
+        type=int,
+        default=int(os.environ.get("WORLD_HEIGHT", "300")),
+        help="World height in pixels (default: 300, env: WORLD_HEIGHT)",
+    )
     return parser.parse_args()
 
 
@@ -240,8 +285,7 @@ def main():
     obs_dim = env.observation_space()
 
     agents = [
-        PCAgent(agent_id=i, rng_key=agent_keys[i], obs_dim=obs_dim, hidden_dim=HIDDEN_DIM)
-        for i in range(N_AGENTS)
+        PCAgent(agent_id=i, rng_key=agent_keys[i], obs_dim=obs_dim, hidden_dim=HIDDEN_DIM) for i in range(N_AGENTS)
     ]
 
     step_logs = []

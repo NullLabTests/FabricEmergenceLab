@@ -15,18 +15,19 @@ Use cases:
 - Standard deep learning workflows
 """
 
-from typing import Dict, Tuple, Any, List, Optional, Callable, cast
 import math
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+
 import jax
 import jax.numpy as jnp
 import optax
 
-from fabricpc.core.types import GraphParams, GraphStructure, GraphState
+from fabricpc.core.types import GraphParams, GraphState, GraphStructure
 from fabricpc.graph_initialization.state_initializer import (
-    initialize_graph_state,
     FeedforwardStateInit,
+    initialize_graph_state,
 )
-from fabricpc.training.train_autoregressive import create_causal_mask, compute_loss
+from fabricpc.training.train_autoregressive import compute_loss, create_causal_mask
 
 
 def validate_feedforward_init(structure: GraphStructure):
@@ -39,8 +40,7 @@ def validate_feedforward_init(structure: GraphStructure):
     init = structure.config["graph_state_initializer"]
     if not isinstance(init, FeedforwardStateInit):
         raise ValueError(
-            f"GraphState initializer must be FeedforwardStateInit for backprop training, "
-            f"got {type(init).__name__}"
+            f"GraphState initializer must be FeedforwardStateInit for backprop training, got {type(init).__name__}"
         )
 
 
@@ -179,11 +179,7 @@ def train_backprop(
     frac = num_epochs - math.floor(num_epochs)
 
     # JIT compile training step
-    jit_train_step = jax.jit(
-        lambda p, o, b, k: train_step_backprop(
-            p, o, b, structure, optimizer, k, loss_type
-        )
-    )
+    jit_train_step = jax.jit(lambda p, o, b, k: train_step_backprop(p, o, b, structure, optimizer, k, loss_type))
 
     iter_results = []
     epoch_results = []
@@ -225,9 +221,7 @@ def train_backprop(
                 raise ValueError(f"Unsupported batch format: {type(batch_data)}")
 
             # Training step
-            params, opt_state, loss = jit_train_step(
-                params, opt_state, batch, batch_keys[batch_idx]
-            )
+            params, opt_state, loss = jit_train_step(params, opt_state, batch, batch_keys[batch_idx])
 
             epoch_loss += float(loss)
             batches_processed += 1
@@ -242,9 +236,7 @@ def train_backprop(
 
         # Epoch callback
         if epoch_callback is not None:
-            epoch_results.append(
-                epoch_callback(epoch_idx, params, structure, config, rng_key)
-            )
+            epoch_results.append(epoch_callback(epoch_idx, params, structure, config, rng_key))
         else:
             epoch_results.append(None)
 
@@ -339,9 +331,7 @@ def train_step_backprop_autoregressive(
     """
 
     def loss_fn(p):
-        return compute_loss_autoregressive(
-            p, structure, batch, rng_key, use_causal_mask
-        )
+        return compute_loss_autoregressive(p, structure, batch, rng_key, use_causal_mask)
 
     # has_aux=True: loss_fn returns (loss, aux), grads computed w.r.t. loss only
     (loss, predictions), grads = jax.value_and_grad(loss_fn, has_aux=True)(params)
@@ -398,9 +388,7 @@ def train_backprop_autoregressive(
 
     # JIT compile training step
     jit_train_step = jax.jit(
-        lambda p, o, b, k: train_step_backprop_autoregressive(
-            p, o, b, structure, optimizer, k, use_causal_mask
-        )
+        lambda p, o, b, k: train_step_backprop_autoregressive(p, o, b, structure, optimizer, k, use_causal_mask)
     )
 
     iter_results = []
@@ -443,9 +431,7 @@ def train_backprop_autoregressive(
                 raise ValueError(f"Unsupported batch format: {type(batch_data)}")
 
             # Training step (predictions discarded during training)
-            params, opt_state, loss, _ = jit_train_step(
-                params, opt_state, batch, batch_keys[batch_idx]
-            )
+            params, opt_state, loss, _ = jit_train_step(params, opt_state, batch, batch_keys[batch_idx])
 
             epoch_loss += float(loss)
             batches_processed += 1
@@ -460,17 +446,13 @@ def train_backprop_autoregressive(
 
         # Epoch callback
         if epoch_callback is not None:
-            epoch_results.append(
-                epoch_callback(epoch_idx, params, structure, config, rng_key)
-            )
+            epoch_results.append(epoch_callback(epoch_idx, params, structure, config, rng_key))
         else:
             epoch_results.append(None)
 
         if verbose:
             perplexity = float(jnp.exp(avg_loss))
-            print(
-                f"Epoch {epoch_idx + 1}/{total_epochs}, Loss: {avg_loss:.4f}, Perplexity: {perplexity:.2f}"
-            )
+            print(f"Epoch {epoch_idx + 1}/{total_epochs}, Loss: {avg_loss:.4f}, Perplexity: {perplexity:.2f}")
 
     return params, iter_results, epoch_results
 
@@ -546,9 +528,7 @@ def evaluate_backprop(
     loss_type = config.get("loss_type", "cross_entropy")
 
     # JIT compile eval step
-    jit_eval_step = jax.jit(
-        lambda p, b, k: eval_step_backprop(p, b, structure, k, loss_type)
-    )
+    jit_eval_step = jax.jit(lambda p, b, k: eval_step_backprop(p, b, structure, k, loss_type))
 
     try:
         num_batches = len(test_loader)
@@ -631,9 +611,7 @@ def evaluate_backprop_autoregressive(
     batch_keys = jax.random.split(rng_key, num_batches_total)
 
     # JIT compile: returns (loss, predictions) tuple
-    jit_forward = jax.jit(
-        lambda p, b, k: compute_loss_autoregressive(p, structure, b, k, use_causal_mask)
-    )
+    jit_forward = jax.jit(lambda p, b, k: compute_loss_autoregressive(p, structure, b, k, use_causal_mask))
 
     total_loss = 0.0
     total_correct = 0
@@ -666,17 +644,13 @@ def evaluate_backprop_autoregressive(
                 f"  [DEBUG] per-token CE loss: min={float(jnp.min(per_token_loss)):.4f}, max={float(jnp.max(per_token_loss)):.4f}, mean={float(jnp.mean(per_token_loss)):.4f}"
             )
 
-            token_intrinsic_perplexity = jnp.exp(
-                -jnp.sum(predictions * log_preds, axis=-1)
-            )  # (batch, seq_len)
+            token_intrinsic_perplexity = jnp.exp(-jnp.sum(predictions * log_preds, axis=-1))  # (batch, seq_len)
             print(
                 f"  [DEBUG] per-token intrinsic perplexity: min={float(jnp.min(token_intrinsic_perplexity)):.4f}, max={float(jnp.max(token_intrinsic_perplexity)):.4f}, mean={float(jnp.mean(token_intrinsic_perplexity)):.4f}"
             )
 
             # Check if there are extreme values
-            correct_probs = jnp.sum(
-                tgt * predictions, axis=-1
-            )  # prob assigned to correct class
+            correct_probs = jnp.sum(tgt * predictions, axis=-1)  # prob assigned to correct class
             print(
                 f"  [DEBUG] prob of correct token: min={float(jnp.min(correct_probs)):.6f}, max={float(jnp.max(correct_probs)):.6f}, mean={float(jnp.mean(correct_probs)):.6f}"
             )

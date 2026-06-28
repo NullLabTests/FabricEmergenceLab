@@ -15,24 +15,21 @@ For fully-connected (dense) behavior that flattens all dimensions, set `flatten_
 
 from __future__ import annotations
 
-from typing import Dict, Any, Optional, Tuple
-import numpy as np
+from typing import Any, Dict, Optional, Tuple
+
 import jax
 import jax.numpy as jnp
+import numpy as np
 
+from fabricpc.core.activations import ActivationBase, IdentityActivation
+from fabricpc.core.energy import EnergyFunctional, GaussianEnergy
+from fabricpc.core.initializers import InitializerBase, KaimingInitializer, NormalInitializer, initialize
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
 from fabricpc.nodes.base import (
+    FlattenInputMixin,
     NodeBase,
     SlotSpec,
-    FlattenInputMixin,
 )
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
-from fabricpc.core.activations import IdentityActivation
-from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.initializers import NormalInitializer, KaimingInitializer, initialize
-
-from fabricpc.core.activations import ActivationBase
-from fabricpc.core.energy import EnergyFunctional
-from fabricpc.core.initializers import InitializerBase
 
 
 class Linear(FlattenInputMixin, NodeBase):
@@ -124,15 +121,11 @@ class Linear(FlattenInputMixin, NodeBase):
 
         # Initialize weight matrix for each incoming edge
         weights_dict = {}
-        rand_key_w = dict(
-            zip(input_shapes.keys(), jax.random.split(key_w, len(input_shapes)))
-        )
+        rand_key_w = dict(zip(input_shapes.keys(), jax.random.split(key_w, len(input_shapes))))
 
         for edge_key, in_shape in input_shapes.items():
             if ":in" not in edge_key:
-                raise ValueError(
-                    f"linear node requires 'in' slot dimension. got edge key {edge_key}"
-                )
+                raise ValueError(f"linear node requires 'in' slot dimension. got edge key {edge_key}")
 
             if flatten_input:
                 in_numel = int(np.prod(in_shape))
@@ -143,9 +136,7 @@ class Linear(FlattenInputMixin, NodeBase):
                 out_features = node_shape[-1]
                 weight_shape = (in_features, out_features)
 
-            weights_dict[edge_key] = initialize(
-                rand_key_w[edge_key], weight_shape, weight_init
-            )
+            weights_dict[edge_key] = initialize(rand_key_w[edge_key], weight_shape, weight_init)
 
         # Initialize bias (usually zeros)
         # Bias shape for proper broadcasting, prepending batch dimension: (1, ..., 1, out_features)
@@ -189,9 +180,7 @@ class Linear(FlattenInputMixin, NodeBase):
 
         if flatten_input:
             # Dense/fully-connected: flatten all dimensions
-            pre_activation = FlattenInputMixin.compute_linear(
-                inputs, params.weights, batch_size, out_shape
-            )
+            pre_activation = FlattenInputMixin.compute_linear(inputs, params.weights, batch_size, out_shape)
         else:
             # Per-position: matmul on last axis only (standard for embeddings)
             # Input shape: (batch, ..., in_features)
@@ -200,9 +189,7 @@ class Linear(FlattenInputMixin, NodeBase):
             pre_activation = jnp.zeros((batch_size,) + out_shape)
             for edge_key, x in inputs.items():
                 # jnp.matmul broadcasts over leading dimensions
-                pre_activation = pre_activation + jnp.matmul(
-                    x, params.weights[edge_key]
-                )
+                pre_activation = pre_activation + jnp.matmul(x, params.weights[edge_key])
 
         # Add bias if present
         if "b" in params.biases and params.biases["b"].size > 0:

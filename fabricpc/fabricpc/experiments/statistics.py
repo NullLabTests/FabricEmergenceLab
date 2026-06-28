@@ -69,9 +69,7 @@ def paired_ttest(group_a: np.ndarray, group_b: np.ndarray) -> PairedTestResult:
     from scipy import stats
 
     if len(group_a) != len(group_b):
-        raise ValueError(
-            f"Groups must have same length: {len(group_a)} vs {len(group_b)}"
-        )
+        raise ValueError(f"Groups must have same length: {len(group_a)} vs {len(group_b)}")
     if len(group_a) < 2:
         raise ValueError("Need at least 2 paired samples for t-test")
 
@@ -108,9 +106,7 @@ def cohens_d(group_a: np.ndarray, group_b: np.ndarray) -> EffectSize:
     return EffectSize(d=d, magnitude=magnitude)
 
 
-def estimate_required_n(
-    observed_d: float, alpha: float = 0.05, power: float = 0.80
-) -> int:
+def estimate_required_n(observed_d: float, alpha: float = 0.05, power: float = 0.80) -> int:
     """Estimate required sample size for a paired t-test.
 
     Uses the approximation: n = ((z_alpha + z_beta) / d)^2

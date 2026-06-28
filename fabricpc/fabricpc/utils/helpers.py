@@ -1,9 +1,7 @@
 from jax import numpy as jnp
 
 
-def layernorm(
-    x: jnp.ndarray, gamma: jnp.ndarray, beta: jnp.ndarray, eps: float = 1e-5
-) -> jnp.ndarray:
+def layernorm(x: jnp.ndarray, gamma: jnp.ndarray, beta: jnp.ndarray, eps: float = 1e-5) -> jnp.ndarray:
     """
     Layer normalization.
     Args:

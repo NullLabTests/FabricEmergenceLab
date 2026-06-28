@@ -64,11 +64,7 @@ def generate():
 
     all_errors = [s["prediction_error"] for s in steps if "prediction_error" in s]
     avg_error = sum(all_errors) / len(all_errors) if all_errors else 0.0
-    var_error = (
-        sum((x - avg_error) ** 2 for x in all_errors) / len(all_errors)
-        if all_errors
-        else 0.0
-    )
+    var_error = sum((x - avg_error) ** 2 for x in all_errors) / len(all_errors) if all_errors else 0.0
     min_error = min(all_errors) if all_errors else 0.0
     max_error = max(all_errors) if all_errors else 0.0
 
@@ -189,12 +185,8 @@ def generate():
 
         f.write("---\n\n")
         f.write("## Per-Episode Metrics\n\n")
-        f.write(
-            "| Episode | Avg Error | Novelty | Entropy | Unique | Transitions | Retrievals | Reward |\n"
-        )
-        f.write(
-            "|---------|-----------|---------|---------|--------|-------------|------------|--------|\n"
-        )
+        f.write("| Episode | Avg Error | Novelty | Entropy | Unique | Transitions | Retrievals | Reward |\n")
+        f.write("|---------|-----------|---------|---------|--------|-------------|------------|--------|\n")
         for i in range(len(metrics)):
             m = metrics[i]
             f.write(
@@ -246,7 +238,7 @@ def generate():
             f.write("|---|---------|------|------|---------|-------------|\n")
             for i, ev in enumerate(top_events):
                 f.write(
-                    f"| {i+1} "
+                    f"| {i + 1} "
                     f"| {ev.get('episode', '?')} "
                     f"| {ev.get('step', '?')} "
                     f"| {ev.get('event_type', '?')} "
@@ -268,9 +260,7 @@ def generate():
         f.write("---\n\n")
         f.write("## Notable Behavioral Changes\n\n")
         if ep_novelty and ep_entropy:
-            first_half_novelty = sum(ep_novelty[: len(ep_novelty) // 2]) / max(
-                len(ep_novelty) // 2, 1
-            )
+            first_half_novelty = sum(ep_novelty[: len(ep_novelty) // 2]) / max(len(ep_novelty) // 2, 1)
             second_half_novelty = sum(ep_novelty[len(ep_novelty) // 2 :]) / max(
                 len(ep_novelty) - len(ep_novelty) // 2, 1
             )
@@ -282,9 +272,7 @@ def generate():
             else:
                 f.write("Consistent throughout experiment.\n")
 
-            first_half_entropy = sum(ep_entropy[: len(ep_entropy) // 2]) / max(
-                len(ep_entropy) // 2, 1
-            )
+            first_half_entropy = sum(ep_entropy[: len(ep_entropy) // 2]) / max(len(ep_entropy) // 2, 1)
             second_half_entropy = sum(ep_entropy[len(ep_entropy) // 2 :]) / max(
                 len(ep_entropy) - len(ep_entropy) // 2, 1
             )
@@ -298,9 +286,7 @@ def generate():
 
         # WorldModel insight
         if wm_latent_norms:
-            first_half_wm = sum(wm_latent_norms[: len(wm_latent_norms) // 2]) / max(
-                len(wm_latent_norms) // 2, 1
-            )
+            first_half_wm = sum(wm_latent_norms[: len(wm_latent_norms) // 2]) / max(len(wm_latent_norms) // 2, 1)
             second_half_wm = sum(wm_latent_norms[len(wm_latent_norms) // 2 :]) / max(
                 len(wm_latent_norms) - len(wm_latent_norms) // 2, 1
             )

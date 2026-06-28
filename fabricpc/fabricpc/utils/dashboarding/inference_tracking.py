@@ -5,17 +5,17 @@ collect intermediate states for detailed tracking and debugging.
 """
 
 from typing import Dict, List, Tuple, cast
+
 import jax
 import jax.numpy as jnp
 import optax
 
+from fabricpc.core.learning import compute_local_weight_gradients
 from fabricpc.core.types import (
     GraphParams,
     GraphState,
     GraphStructure,
-    NodeState,
 )
-from fabricpc.core.learning import compute_local_weight_gradients
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
 
 
@@ -54,20 +54,14 @@ def run_inference_with_history(
     config = inference_obj.config
     infer_steps = config["infer_steps"]
 
-    def scan_fn(
-        state: GraphState, _: None
-    ) -> Tuple[GraphState, Dict[str, Dict[str, jnp.ndarray]]]:
-        new_state = inference_cls.inference_step(
-            params, state, clamps, structure, config
-        )
+    def scan_fn(state: GraphState, _: None) -> Tuple[GraphState, Dict[str, Dict[str, jnp.ndarray]]]:
+        new_state = inference_cls.inference_step(params, state, clamps, structure, config)
         # Extract key metrics for history (lightweight)
         # Reduce over batch dimension to get scalar metrics per step
         step_metrics = {
             node_name: {
                 "energy": jnp.mean(node_state.energy),
-                "latent_grad_norm": jnp.mean(
-                    jnp.linalg.norm(node_state.latent_grad, axis=-1)
-                ),
+                "latent_grad_norm": jnp.mean(jnp.linalg.norm(node_state.latent_grad, axis=-1)),
                 "error_norm": jnp.mean(jnp.linalg.norm(node_state.error, axis=-1)),
                 "z_latent_mean": jnp.mean(node_state.z_latent),
                 "z_latent_std": jnp.mean(jnp.std(node_state.z_latent, axis=-1)),
@@ -112,8 +106,7 @@ def _unstack_metrics(
         step_dict: Dict[str, Dict[str, float]] = {}
         for node_name, node_metrics in stacked_metrics.items():
             step_dict[node_name] = {
-                metric_name: float(metric_arr[step])
-                for metric_name, metric_arr in node_metrics.items()
+                metric_name: float(metric_arr[step]) for metric_name, metric_arr in node_metrics.items()
             }
         history.append(step_dict)
 
@@ -217,14 +210,10 @@ def train_step_with_history(
     )
 
     # Run inference WITH history collection (returns stacked metrics)
-    final_state, stacked_history = run_inference_with_history(
-        params, init_state, clamps, structure, collect_every
-    )
+    final_state, stacked_history = run_inference_with_history(params, init_state, clamps, structure, collect_every)
 
     # Compute energy
-    energy = sum(
-        [jnp.sum(final_state.nodes[node_name].energy) for node_name in structure.nodes]
-    )
+    energy = sum([jnp.sum(final_state.nodes[node_name].energy) for node_name in structure.nodes])
 
     # Compute gradients and update
     grads = compute_local_weight_gradients(params, final_state, structure)

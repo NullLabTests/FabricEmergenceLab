@@ -3,22 +3,21 @@
 Tests for natural gradient optimizer transforms and their integration with training.
 """
 
-import pytest
 import jax
 import jax.numpy as jnp
 import optax
-
+import pytest
+from fabricpc.core.activations import SigmoidActivation
+from fabricpc.core.inference import InferenceSGD
+from fabricpc.core.topology import Edge
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import Linear
+from fabricpc.training import train_step
 from fabricpc.training.optimizers import (
     scale_by_natural_gradient_diag,
     scale_by_natural_gradient_layerwise,
 )
-from fabricpc.training import train_step
-from fabricpc.nodes import Linear
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
-from fabricpc.core.activations import SigmoidActivation
-from fabricpc.core.inference import InferenceSGD
 
 
 def test_ngd_diag_updates():

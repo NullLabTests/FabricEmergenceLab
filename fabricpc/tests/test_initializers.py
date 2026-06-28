@@ -6,17 +6,14 @@ Tests core initializer implementations, custom initializer creation,
 and determinism.
 """
 
-import pytest
-import jax
 import jax.numpy as jnp
-
 from fabricpc.core.initializers import (
     InitializerBase,
-    initialize,
-    ZerosInitializer,
+    KaimingInitializer,
     NormalInitializer,
     XavierInitializer,
-    KaimingInitializer,
+    ZerosInitializer,
+    initialize,
 )
 
 
@@ -55,9 +52,7 @@ class TestBuiltinInitializers:
         result = initialize(
             rng_key,
             shape,
-            KaimingInitializer(
-                mode="fan_in", nonlinearity="relu", distribution="normal"
-            ),
+            KaimingInitializer(mode="fan_in", nonlinearity="relu", distribution="normal"),
         )
 
         assert result.shape == shape

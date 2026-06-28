@@ -4,7 +4,7 @@ These functions create callbacks compatible with the train_pcn function's
 iter_callback and epoch_callback parameters.
 """
 
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import jax
 
@@ -67,9 +67,7 @@ def create_epoch_callback(
         # Optionally run evaluation
         eval_metrics = None
         if eval_fn is not None and eval_loader is not None:
-            eval_metrics = eval_fn(
-                params, structure, eval_loader, eval_config or config, rng_key
-            )
+            eval_metrics = eval_fn(params, structure, eval_loader, eval_config or config, rng_key)
             tracker.track_epoch_metrics(eval_metrics, epoch=epoch_idx, subset="val")
 
         return eval_metrics
@@ -130,11 +128,7 @@ def create_tracking_callbacks(
         tracker.log_graph_structure(structure)
 
     iter_callback = create_iter_callback(tracker, batch_size=batch_size)
-    epoch_callback = (
-        create_epoch_callback(tracker, structure, eval_fn, eval_loader, eval_config)
-        if structure
-        else None
-    )
+    epoch_callback = create_epoch_callback(tracker, structure, eval_fn, eval_loader, eval_config) if structure else None
 
     return tracker, iter_callback, epoch_callback
 
@@ -170,15 +164,11 @@ def create_detailed_iter_callback(
         tracker.track_batch_energy(energy, epoch=epoch_idx, batch=batch_idx)
 
         # Track per-node energy
-        tracker.track_batch_energy_per_node(
-            final_state, structure, epoch=epoch_idx, batch=batch_idx
-        )
+        tracker.track_batch_energy_per_node(final_state, structure, epoch=epoch_idx, batch=batch_idx)
 
         # Track state stats/distributions (if at right batch + infer_step frequency)
         if batch_idx % tracker.config.tracking_every_n_batches == 0:
-            tracker.track_state(
-                final_state, epoch=epoch_idx, batch=batch_idx, infer_step=0
-            )
+            tracker.track_state(final_state, epoch=epoch_idx, batch=batch_idx, infer_step=0)
 
         return energy
 

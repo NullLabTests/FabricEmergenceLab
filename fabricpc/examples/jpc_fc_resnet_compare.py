@@ -95,24 +95,23 @@ set_jax_flags_before_importing_jax()
 import argparse
 import math
 import time
-from typing import Dict, Any, Optional, Tuple
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-
-from fabricpc.nodes import IdentityNode
-from fabricpc.nodes.base import NodeBase, SlotSpec
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
 from fabricpc.core.activations import IdentityActivation, ReLUActivation
 from fabricpc.core.energy import GaussianEnergy
 from fabricpc.core.inference import InferenceSGDNormClip
 from fabricpc.core.initializers import NormalInitializer, initialize
-from fabricpc.core.types import NodeParams, NodeState, NodeInfo
-from fabricpc.training import train_pcn, evaluate_pcn
+from fabricpc.core.topology import Edge
+from fabricpc.core.types import NodeParams
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import IdentityNode
+from fabricpc.nodes.base import NodeBase, SlotSpec
+from fabricpc.training import evaluate_pcn, train_pcn
 from fabricpc.utils.data.dataloader import MnistLoader
 
 jax.config.update("jax_default_prng_impl", "threefry2x32")
@@ -123,9 +122,7 @@ jax.config.update("jax_default_prng_impl", "threefry2x32")
 # =============================================================================
 
 
-def compute_scaling_factors(
-    input_dim: int, width: int, depth: int, mode: str
-) -> Tuple[float, float, float, float]:
+def compute_scaling_factors(input_dim: int, width: int, depth: int, mode: str) -> Tuple[float, float, float, float]:
     """
     Compute per-layer-type scaling factors.
 
@@ -181,10 +178,7 @@ def compute_scaling_factors(
         skip_scale = 1.0
         out_scale = 1.0 / width
     else:
-        raise ValueError(
-            f"Unknown scaling mode: {mode!r}. "
-            "Use 'jpc', 'fabricpc', or 'fabricpc_v2'."
-        )
+        raise ValueError(f"Unknown scaling mode: {mode!r}. Use 'jpc', 'fabricpc', or 'fabricpc_v2'.")
 
     return in_scale, hidden_scale, out_scale, skip_scale
 
@@ -487,9 +481,7 @@ def build_fc_resnet(
     if infer_steps is None:
         infer_steps = 3 * depth
 
-    in_scale, hidden_scale, out_scale, skip_scale = compute_scaling_factors(
-        input_dim, width, depth, scaling_mode
-    )
+    in_scale, hidden_scale, out_scale, skip_scale = compute_scaling_factors(input_dim, width, depth, scaling_mode)
 
     weight_init = NormalInitializer(mean=0.0, std=1.0)
 
@@ -536,9 +528,7 @@ def build_fc_resnet(
         nodes=all_nodes,
         edges=all_edges,
         task_map=TaskMap(x=input_node, y=readout),
-        inference=InferenceSGDNormClip(
-            eta_infer=eta_infer, infer_steps=infer_steps, max_norm=max_norm
-        ),
+        inference=InferenceSGDNormClip(eta_infer=eta_infer, infer_steps=infer_steps, max_norm=max_norm),
     )
 
     return structure
@@ -559,24 +549,12 @@ def parse_args():
         help="Scaling formula: 'jpc' (1/sqrt(N*L)), 'fabricpc' (gain/sqrt(N*K), K=2), "
         "or 'fabricpc_v2' (gain/sqrt(N*L), skip=1)",
     )
-    parser.add_argument(
-        "--depth", type=int, default=10, help="Total parameterized layers (default: 10)"
-    )
-    parser.add_argument(
-        "--width", type=int, default=128, help="Hidden layer width (default: 128)"
-    )
-    parser.add_argument(
-        "--batch_size", type=int, default=256, help="Batch size (default: 64)"
-    )
-    parser.add_argument(
-        "--num_epochs", type=int, default=3, help="Training epochs (default: 3)"
-    )
-    parser.add_argument(
-        "--eta_infer", type=float, default=0.2, help="Inference rate (default: 0.2)"
-    )
-    parser.add_argument(
-        "--param_lr", type=float, default=0.001, help="Parameter LR (default: 0.001)"
-    )
+    parser.add_argument("--depth", type=int, default=10, help="Total parameterized layers (default: 10)")
+    parser.add_argument("--width", type=int, default=128, help="Hidden layer width (default: 128)")
+    parser.add_argument("--batch_size", type=int, default=256, help="Batch size (default: 64)")
+    parser.add_argument("--num_epochs", type=int, default=3, help="Training epochs (default: 3)")
+    parser.add_argument("--eta_infer", type=float, default=0.2, help="Inference rate (default: 0.2)")
+    parser.add_argument("--param_lr", type=float, default=0.001, help="Parameter LR (default: 0.001)")
     parser.add_argument(
         "--infer_steps",
         type=int,
@@ -605,8 +583,8 @@ def probe_variance(params, structure, test_loader, rng_key):
     Prints a table showing z_mu variance, latent_grad variance, and
     z_latent variance at each layer, revealing signal propagation issues.
     """
-    from fabricpc.graph_initialization.state_initializer import initialize_graph_state
     from fabricpc.core.inference import run_inference
+    from fabricpc.graph_initialization.state_initializer import initialize_graph_state
 
     # Get one batch
     batch = next(iter(test_loader))
@@ -618,9 +596,7 @@ def probe_variance(params, structure, test_loader, rng_key):
     task_map = structure.task_map
     clamps = {task_map["x"]: x_batch, task_map["y"]: y_batch}
 
-    state = initialize_graph_state(
-        structure, batch_size, rng_key, clamps=clamps, params=params
-    )
+    state = initialize_graph_state(structure, batch_size, rng_key, clamps=clamps, params=params)
     final_state = run_inference(params, state, clamps, structure)
 
     # Collect per-layer stats
@@ -628,10 +604,7 @@ def probe_variance(params, structure, test_loader, rng_key):
     print("\n" + "=" * 72)
     print("Per-Layer Variance Diagnostics (after inference)")
     print("=" * 72)
-    print(
-        f"{'Layer':<12} {'Var(z_mu)':>12} {'Var(z_lat)':>12} "
-        f"{'Var(grad)':>12} {'Var(error)':>12}"
-    )
+    print(f"{'Layer':<12} {'Var(z_mu)':>12} {'Var(z_lat)':>12} {'Var(grad)':>12} {'Var(error)':>12}")
     print("-" * 72)
 
     for node_name in node_order:
@@ -640,10 +613,7 @@ def probe_variance(params, structure, test_loader, rng_key):
         z_lat_var = float(jnp.var(ns.z_latent))
         grad_var = float(jnp.var(ns.latent_grad))
         error_var = float(jnp.var(ns.error))
-        print(
-            f"{node_name:<12} {z_mu_var:>12.4f} {z_lat_var:>12.4f} "
-            f"{grad_var:>12.4f} {error_var:>12.4f}"
-        )
+        print(f"{node_name:<12} {z_mu_var:>12.4f} {z_lat_var:>12.4f} {grad_var:>12.4f} {error_var:>12.4f}")
 
     print("=" * 72)
 
@@ -657,13 +627,8 @@ def main():
     print(f"Scaling mode: {args.scaling}")
     print(f"Architecture: FC-ResNet, depth={args.depth}, width={args.width}")
     steps = args.infer_steps or 3 * args.depth
-    print(
-        f"Inference: eta={args.eta_infer}, steps={steps}, " f"max_norm={args.max_norm}"
-    )
-    print(
-        f"Training: lr={args.param_lr}, batch_size={args.batch_size}, "
-        f"epochs={args.num_epochs}"
-    )
+    print(f"Inference: eta={args.eta_infer}, steps={steps}, max_norm={args.max_norm}")
+    print(f"Training: lr={args.param_lr}, batch_size={args.batch_size}, epochs={args.num_epochs}")
 
     master_rng_key = jax.random.PRNGKey(42)
     graph_key, train_key, eval_key = jax.random.split(master_rng_key, 3)
@@ -682,9 +647,7 @@ def main():
     params = initialize_params(structure, graph_key)
 
     # Print scaling factors
-    in_s, hid_s, out_s, skip_s = compute_scaling_factors(
-        784, args.width, args.depth, args.scaling
-    )
+    in_s, hid_s, out_s, skip_s = compute_scaling_factors(784, args.width, args.depth, args.scaling)
     print(f"\nScaling factors ({args.scaling}):")
     print(f"  input layer:   {in_s:.6f}")
     print(f"  hidden layers: {hid_s:.6f}")
@@ -715,10 +678,7 @@ def main():
     optimizer = optax.adam(args.param_lr)
     train_config = {"num_epochs": args.num_epochs}
 
-    print(
-        f"\nTraining for {args.num_epochs} epoch(s) "
-        f"(JIT compilation on first batch)..."
-    )
+    print(f"\nTraining for {args.num_epochs} epoch(s) (JIT compilation on first batch)...")
     start_time = time.time()
 
     trained_params, energy_history, _ = train_pcn(
@@ -736,19 +696,14 @@ def main():
 
     # Evaluate
     print("\nEvaluating...")
-    metrics = evaluate_pcn(
-        trained_params, structure, test_loader, train_config, eval_key
-    )
+    metrics = evaluate_pcn(trained_params, structure, test_loader, train_config, eval_key)
     accuracy = metrics["accuracy"] * 100
     print(f"Test Accuracy: {accuracy:.2f}%")
 
     # Comparison
-    print(f"\n--- Comparison ---")
-    print(f"jpc reference:   ~93% (depth=30, width=128, ODE solver)")
-    print(
-        f"This run:        {accuracy:.2f}% (depth={args.depth}, "
-        f"width={args.width}, scaling={args.scaling})"
-    )
+    print("\n--- Comparison ---")
+    print("jpc reference:   ~93% (depth=30, width=128, ODE solver)")
+    print(f"This run:        {accuracy:.2f}% (depth={args.depth}, width={args.width}, scaling={args.scaling})")
 
     # Variance diagnostics
     if args.probe_variance:

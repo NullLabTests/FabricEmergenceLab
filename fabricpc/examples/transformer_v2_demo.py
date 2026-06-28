@@ -27,40 +27,35 @@ from jax_setup import set_jax_flags_before_importing_jax
 set_jax_flags_before_importing_jax()
 
 import argparse
+import time
+
 import jax
 import jax.numpy as jnp
+import optax
+from fabricpc.core.inference import InferenceSGD, run_inference
 from fabricpc.graph_initialization import initialize_params
-from fabricpc.training import (
-    train_pcn,
-    evaluate_transformer,
-    train_backprop,
-    evaluate_backprop,
-)
-from fabricpc.core.inference import run_inference, InferenceSGD
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
 from fabricpc.nodes.transformer_v2 import create_deep_transformer
+from fabricpc.training import (
+    evaluate_backprop,
+    evaluate_transformer,
+    train_backprop,
+    train_pcn,
+)
 from fabricpc.utils.data import CharDataLoader
-import optax
-import time
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Decomposed PC Transformer on Tiny Shakespeare"
-    )
+    parser = argparse.ArgumentParser(description="Decomposed PC Transformer on Tiny Shakespeare")
     parser.add_argument(
         "--mode",
         choices=["pc", "backprop"],
         default="pc",
         help="Training mode: predictive coding or backpropagation (default: pc)",
     )
-    parser.add_argument(
-        "--depth", type=int, default=4, help="Number of transformer layers"
-    )
+    parser.add_argument("--depth", type=int, default=4, help="Number of transformer layers")
     parser.add_argument("--embed_dim", type=int, default=64, help="Embedding dimension")
-    parser.add_argument(
-        "--num_heads", type=int, default=4, help="Number of attention heads"
-    )
+    parser.add_argument("--num_heads", type=int, default=4, help="Number of attention heads")
     parser.add_argument("--mlp_dim", type=int, default=128, help="MLP hidden dimension")
     parser.add_argument("--seq_len", type=int, default=32, help="Sequence length")
     parser.add_argument(
@@ -69,13 +64,9 @@ def parse_args():
         default=32,
         help="Batch size (per-device for PC mode, total for backprop)",
     )
-    parser.add_argument(
-        "--num_epochs", type=int, default=5, help="Number of training epochs"
-    )
+    parser.add_argument("--num_epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--lr", type=float, default=1e-5, help="Learning rate")
-    parser.add_argument(
-        "--infer_steps", type=int, default=17, help="PC inference steps"
-    )
+    parser.add_argument("--infer_steps", type=int, default=17, help="PC inference steps")
     parser.add_argument(
         "--eta_infer",
         type=float,
@@ -112,15 +103,13 @@ def generate(
     result_text = start_text
     gen_key = jax.random.PRNGKey(99)
 
-    print(f"--- Generating ---")
+    print("--- Generating ---")
     for _ in range(length):
         input_batch = jnp.array([current_indices], dtype=jnp.int32)
         inputs = {"input_ids": input_batch}
         batch_size = input_batch.shape[0]
 
-        state = initialize_graph_state(
-            structure, batch_size, gen_key, clamps=inputs, params=trained_params
-        )
+        state = initialize_graph_state(structure, batch_size, gen_key, clamps=inputs, params=trained_params)
 
         if use_inference:
             final_state = run_inference(trained_params, state, inputs, structure)
@@ -164,12 +153,8 @@ def main(args=None):
         shuffle=True,
         seed=args.seed,
     )
-    val_loader = CharDataLoader(
-        "validation", seq_len=args.seq_len, batch_size=batch_size, shuffle=False
-    )
-    test_loader = CharDataLoader(
-        "test", seq_len=args.seq_len, batch_size=batch_size, shuffle=False
-    )
+    val_loader = CharDataLoader("validation", seq_len=args.seq_len, batch_size=batch_size, shuffle=False)
+    test_loader = CharDataLoader("test", seq_len=args.seq_len, batch_size=batch_size, shuffle=False)
     vocab_size = train_loader.vocab_size
     char_to_ix = train_loader.char_to_idx
     ix_to_char = train_loader.idx_to_char
@@ -225,17 +210,13 @@ def main(args=None):
 
     # --- Evaluate ---
     if use_pc:
-        metrics = evaluate_transformer(
-            trained_params, structure, test_loader, train_config, eval_key
-        )
+        metrics = evaluate_transformer(trained_params, structure, test_loader, train_config, eval_key)
         print(f"Test Accuracy:   {metrics['accuracy'] * 100:.2f}%")
         print(f"Test CE Loss:    {metrics['cross_entropy']:.4f}")
         print(f"Test Perplexity: {metrics['perplexity']:.2f}")
         print(f"Test Energy:     {metrics['energy']:.4f}")
     else:
-        metrics = evaluate_backprop(
-            trained_params, structure, test_loader, train_config, eval_key
-        )
+        metrics = evaluate_backprop(trained_params, structure, test_loader, train_config, eval_key)
         print(f"Test Accuracy:   {metrics['accuracy'] * 100:.2f}%")
         print(f"Test CE Loss:    {metrics['loss']:.4f}")
         print(f"Test Perplexity: {metrics['perplexity']:.2f}")

@@ -29,22 +29,22 @@ from jax_setup import set_jax_flags_before_importing_jax
 
 set_jax_flags_before_importing_jax()
 
-import jax
 import argparse
 
-from fabricpc.nodes import Linear, IdentityNode
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
+import jax
+import optax
 from fabricpc.core.activations import (
     SigmoidActivation,
     SoftmaxActivation,
 )
 from fabricpc.core.energy import CrossEntropyEnergy
 from fabricpc.core.inference import InferenceSGD
-import optax
-from fabricpc.training import train_pcn, evaluate_pcn
-from fabricpc.experiments import ExperimentArm, ABExperiment
+from fabricpc.core.topology import Edge
+from fabricpc.experiments import ABExperiment, ExperimentArm
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import IdentityNode, Linear
+from fabricpc.training import evaluate_pcn, train_pcn
 from fabricpc.utils.data.dataloader import MnistLoader
 
 jax.config.update("jax_default_prng_impl", "threefry2x32")
@@ -58,9 +58,7 @@ batch_size = 200
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Statistical comparison of cyclic vs MLP on MNIST"
-    )
+    parser = argparse.ArgumentParser(description="Statistical comparison of cyclic vs MLP on MNIST")
     parser.add_argument(
         "--n_trials",
         type=int,
@@ -138,12 +136,10 @@ def main():
     print("=" * 70)
     print("Statistical Comparison: Cyclic Graph vs Standard MLP")
     print("=" * 70)
-    print(f"Dataset: MNIST")
-    print(
-        f"Cyclic Graph: 784 -> [256 + 256_lat] -> [64 + 64_lat] -> 10  (6 nodes, 7 edges)"
-    )
-    print(f"MLP:     784 -> 256 -> 64 -> 10                         (4 nodes, 3 edges)")
-    print(f"Training: Predictive Coding (both arms)")
+    print("Dataset: MNIST")
+    print("Cyclic Graph: 784 -> [256 + 256_lat] -> [64 + 64_lat] -> 10  (6 nodes, 7 edges)")
+    print("MLP:     784 -> 256 -> 64 -> 10                         (4 nodes, 3 edges)")
+    print("Training: Predictive Coding (both arms)")
     print(f"Epochs per trial: {train_config['num_epochs']}")
     print(f"Number of trials: {args.n_trials}")
     print()

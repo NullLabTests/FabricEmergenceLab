@@ -6,31 +6,30 @@ Covers graph construction, validation, inference, training, forward methods,
 complex graph topologies, and identity node behavior.
 """
 
-import numpy as np
-import pytest
 import jax
 import jax.numpy as jnp
-
-from fabricpc.core.types import NodeState, NodeParams, GraphState
-from fabricpc.core.learning import compute_local_weight_gradients
-from fabricpc.graph_initialization import initialize_params
-from fabricpc.graph_initialization.state_initializer import initialize_graph_state
-from fabricpc.core.inference import InferenceSGD
+import numpy as np
 import optax
-from fabricpc.training import train_step
-from fabricpc.nodes import Linear
-from fabricpc.nodes.identity import IdentityNode
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
+import pytest
+from conftest import with_inference
 from fabricpc.core.activations import (
     IdentityActivation,
     ReLUActivation,
-    TanhActivation,
     SigmoidActivation,
+    TanhActivation,
 )
-from fabricpc.core.initializers import XavierInitializer
 from fabricpc.core.energy import GaussianEnergy
-from conftest import with_inference
+from fabricpc.core.inference import InferenceSGD
+from fabricpc.core.initializers import XavierInitializer
+from fabricpc.core.learning import compute_local_weight_gradients
+from fabricpc.core.topology import Edge
+from fabricpc.core.types import GraphState, NodeParams, NodeState
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.graph_initialization.state_initializer import initialize_graph_state
+from fabricpc.nodes import Linear
+from fabricpc.nodes.identity import IdentityNode
+from fabricpc.training import train_step
 
 
 @pytest.fixture
@@ -374,16 +373,10 @@ class TestForwardMethods:
                 )
 
                 for edge_key in node_params.weights:
-                    assert (
-                        param_grads.weights[edge_key].shape
-                        == node_params.weights[edge_key].shape
-                    )
+                    assert param_grads.weights[edge_key].shape == node_params.weights[edge_key].shape
 
                 for bias_key in node_params.biases:
-                    assert (
-                        param_grads.biases[bias_key].shape
-                        == node_params.biases[bias_key].shape
-                    )
+                    assert param_grads.biases[bias_key].shape == node_params.biases[bias_key].shape
 
 
 class TestComplexGraphs:
@@ -427,9 +420,7 @@ class TestComplexGraphs:
         )
 
         struct_mod = with_inference(structure, eta_infer=0.1, infer_steps=10)
-        final_state = type(struct_mod.config["inference"]).run_inference(
-            params, state, clamps, struct_mod
-        )
+        final_state = type(struct_mod.config["inference"]).run_inference(params, state, clamps, struct_mod)
 
         assert not jnp.any(jnp.isnan(final_state.nodes["output"].z_mu))
 
@@ -464,17 +455,15 @@ class TestIdentityNode:
     @pytest.mark.parametrize("num_inputs", [1, 3])
     def test_output_equals_sum_of_inputs(self, rng_key, num_inputs):
         """z_mu should equal sum of inputs."""
-        from fabricpc.core.types import NodeInfo
         from fabricpc.core.initializers import NormalInitializer
+        from fabricpc.core.types import NodeInfo
 
         batch_size, node_shape = 4, (10,)
         full_shape = (batch_size,) + node_shape
 
         keys = jax.random.split(rng_key, num_inputs + 1)
         edge_keys = [f"src{i}->node:in" for i in range(num_inputs)]
-        inputs = {
-            k: jax.random.normal(keys[i], full_shape) for i, k in enumerate(edge_keys)
-        }
+        inputs = {k: jax.random.normal(keys[i], full_shape) for i, k in enumerate(edge_keys)}
 
         state = NodeState(
             z_latent=jax.random.normal(keys[-1], full_shape),

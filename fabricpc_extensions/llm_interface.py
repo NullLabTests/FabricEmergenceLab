@@ -20,6 +20,7 @@ from typing import Dict, Optional
 
 try:
     import requests
+
     HAS_REQUESTS = True
 except ImportError:
     HAS_REQUESTS = False
@@ -45,11 +46,7 @@ def build_step_summary(step_log_path: Path, max_steps: int = 100) -> str:
 
     # sample if too many
     if len(steps) > max_steps:
-        indices = set(
-            [0]
-            + list(range(0, len(steps), len(steps) // (max_steps - 2)))
-            + [len(steps) - 1]
-        )
+        indices = set([0] + list(range(0, len(steps), len(steps) // (max_steps - 2))) + [len(steps) - 1])
         steps = [steps[i] for i in sorted(indices)]
 
     lines = ["## Step Data (sampled)"]
@@ -61,10 +58,7 @@ def build_step_summary(step_log_path: Path, max_steps: int = 100) -> str:
         reward = s.get("reward", "?")
         wm_norm = s.get("wm_latent_norm", "?")
         wm_trans = s.get("wm_transition_loss", "?")
-        lines.append(
-            f"  ep={ep} step={ts} err={err} pos={pos} reward={reward} "
-            f"wm_norm={wm_norm} wm_trans={wm_trans}"
-        )
+        lines.append(f"  ep={ep} step={ts} err={err} pos={pos} reward={reward} wm_norm={wm_norm} wm_trans={wm_trans}")
 
     return "\n".join(lines)
 
@@ -87,18 +81,20 @@ def build_metrics_summary(metrics_path: Path) -> str:
     lines = ["## Per-Episode Metrics"]
     for m in metrics:
         lines.append(
-            f"  ep={m.get('episode','?')} agent={m.get('agent_id','?')} "
-            f"avg_err={m.get('avg_prediction_error','?'):.4f} "
-            f"unique={m.get('unique_states_explored','?')} "
-            f"novelty={m.get('novelty_score','?'):.4f} "
-            f"entropy={m.get('agent_entropy','?'):.4f} "
-            f"reward={m.get('total_reward','?'):.2f} "
-            f"goals={m.get('goals_reached','?')}"
+            f"  ep={m.get('episode', '?')} agent={m.get('agent_id', '?')} "
+            f"avg_err={m.get('avg_prediction_error', '?'):.4f} "
+            f"unique={m.get('unique_states_explored', '?')} "
+            f"novelty={m.get('novelty_score', '?'):.4f} "
+            f"entropy={m.get('agent_entropy', '?'):.4f} "
+            f"reward={m.get('total_reward', '?'):.2f} "
+            f"goals={m.get('goals_reached', '?')}"
         )
 
     # aggregate
     avg_err = float(m.get("avg_prediction_error", 0)) if metrics else 0
-    lines.append(f"\n**Aggregate: avg_error={sum(m.get('avg_prediction_error',0) for m in metrics)/len(metrics):.4f} over {len(metrics)} episodes**")
+    lines.append(
+        f"\n**Aggregate: avg_error={sum(m.get('avg_prediction_error', 0) for m in metrics) / len(metrics):.4f} over {len(metrics)} episodes**"
+    )
     return "\n".join(lines)
 
 
@@ -118,6 +114,7 @@ def build_event_summary(event_path: Path) -> str:
         return "No emergence events detected."
 
     from collections import Counter
+
     type_counts = Counter(e.get("event_type", "unknown") for e in events)
 
     lines = ["## Emergence Events"]
@@ -242,8 +239,7 @@ Be specific, reference the actual numbers, and flag any surprising patterns."""
             "interpretation": (
                 "LLM interpretation not available. "
                 "Set LLM_API_KEY environment variable and ensure `requests` is installed.\n\n"
-                "The experiment log contains the following data sections:\n"
-                + summary[:2000]
+                "The experiment log contains the following data sections:\n" + summary[:2000]
             ),
             "model": None,
             "fallback": True,

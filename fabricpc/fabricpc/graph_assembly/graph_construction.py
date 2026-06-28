@@ -2,16 +2,17 @@
 
 import types
 from dataclasses import replace
-from typing import List, Dict, Optional, Tuple
-from fabricpc.core.types import GraphStructure, NodeInfo, EdgeInfo, SlotInfo
+from typing import Dict, List, Optional, Tuple
+
 from fabricpc.core.inference import InferenceBase
 from fabricpc.core.mupc import MuPCConfig, compute_mupc_scalings
-from fabricpc.core.topology import Edge, SlotRef
-from fabricpc.nodes.base import NodeBase
+from fabricpc.core.topology import Edge
+from fabricpc.core.types import EdgeInfo, GraphStructure, NodeInfo, SlotInfo
 from fabricpc.graph_initialization.state_initializer import (
-    StateInitBase,
     FeedforwardStateInit,
+    StateInitBase,
 )
+from fabricpc.nodes.base import NodeBase
 
 
 class TaskMap:
@@ -46,8 +47,7 @@ def _build_slots(node: NodeBase, in_edges: Dict[str, EdgeInfo]) -> Dict[str, Slo
         # Validate single-input constraint
         if not slot_spec.is_multi_input and len(in_neighbors) > 1:
             raise ValueError(
-                f"Slot '{slot_name}' in node '{node.name}' is single-input "
-                f"but has {len(in_neighbors)} connections"
+                f"Slot '{slot_name}' in node '{node.name}' is single-input but has {len(in_neighbors)} connections"
             )
 
         slots[slot_name] = SlotInfo(
@@ -62,9 +62,7 @@ def _build_slots(node: NodeBase, in_edges: Dict[str, EdgeInfo]) -> Dict[str, Slo
     return slots
 
 
-def _topological_sort(
-    nodes: Dict[str, NodeBase], edges: Dict[str, EdgeInfo]
-) -> Tuple[str, ...]:
+def _topological_sort(nodes: Dict[str, NodeBase], edges: Dict[str, EdgeInfo]) -> Tuple[str, ...]:
     """
     BFS-based topological sort. Feedforward traversal for initialization uses this topological ordering of nodes.
 
@@ -140,9 +138,7 @@ def graph(
         target_name = edge.target_node.name
         target_slot = edge.target_slot
         key = f"{source_name}->{target_name}:{target_slot}"
-        edge_infos[key] = EdgeInfo(
-            key=key, source=source_name, target=target_name, slot=target_slot
-        )
+        edge_infos[key] = EdgeInfo(key=key, source=source_name, target=target_name, slot=target_slot)
 
     # 2. Build node names set for validation
     node_names = {node.name for node in nodes}
@@ -204,13 +200,9 @@ def graph(
     # 5b. Compute and attach muPC scalings if requested
     if scaling is not None:
         if not isinstance(scaling, MuPCConfig):
-            raise TypeError(
-                f"scaling must be a MuPCConfig instance, got {type(scaling)}"
-            )
+            raise TypeError(f"scaling must be a MuPCConfig instance, got {type(scaling)}")
 
-        mupc_scalings = compute_mupc_scalings(
-            finalized_nodes, edge_infos, scaling, node_order
-        )
+        mupc_scalings = compute_mupc_scalings(finalized_nodes, edge_infos, scaling, node_order)
 
         # Attach scaling_config to each NodeInfo via copy-on-finalize
         updated_nodes = {}

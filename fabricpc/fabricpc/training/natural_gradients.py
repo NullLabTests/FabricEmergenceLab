@@ -57,9 +57,7 @@ def scale_by_natural_gradient_diag(
             updates,
             fisher_diag,
         )
-        return preconditioned_updates, DiagonalNaturalGradientState(
-            fisher_diag=fisher_diag
-        )
+        return preconditioned_updates, DiagonalNaturalGradientState(fisher_diag=fisher_diag)
 
     return optax.GradientTransformation(init_fn, update_fn)
 
@@ -85,9 +83,7 @@ def scale_by_natural_gradient_layerwise(
     one_minus_decay = 1.0 - fisher_decay
 
     def init_fn(params):
-        fisher_scalar = jax.tree_util.tree_map(
-            lambda p: jnp.zeros((), dtype=p.dtype), params
-        )
+        fisher_scalar = jax.tree_util.tree_map(lambda p: jnp.zeros((), dtype=p.dtype), params)
         return LayerwiseNaturalGradientState(fisher_scalar=fisher_scalar)
 
     def update_fn(updates, state, params=None):
@@ -102,9 +98,7 @@ def scale_by_natural_gradient_layerwise(
             updates,
             fisher_scalar,
         )
-        return preconditioned_updates, LayerwiseNaturalGradientState(
-            fisher_scalar=fisher_scalar
-        )
+        return preconditioned_updates, LayerwiseNaturalGradientState(fisher_scalar=fisher_scalar)
 
     return optax.GradientTransformation(init_fn, update_fn)
 

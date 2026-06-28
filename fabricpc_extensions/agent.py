@@ -168,53 +168,58 @@ class BehaviorTracker:
             if key not in self._reported_events:
                 self._reported_events.add(key)
                 self._last_explore_step = step
-                events.append({
-                    "episode": episode,
-                    "step": step,
-                    "event_type": "sustained_exploration",
-                    "novelty_score": round(unique_ratio, 3),
-                    "description": f"Agent explored {n_unique} unique positions in last {BEHAVIOR_WINDOW} steps.",
-                })
+                events.append(
+                    {
+                        "episode": episode,
+                        "step": step,
+                        "event_type": "sustained_exploration",
+                        "novelty_score": round(unique_ratio, 3),
+                        "description": f"Agent explored {n_unique} unique positions in last {BEHAVIOR_WINDOW} steps.",
+                    }
+                )
 
-        if (
-            self.detect_loops()
-            and step - self._last_loop_step >= min_gap
-        ):
+        if self.detect_loops() and step - self._last_loop_step >= min_gap:
             self._last_loop_step = step
             loop_positions = self.position_history[-20:]
             center = loop_positions[-1] if loop_positions else (0, 0)
-            events.append({
-                "episode": episode,
-                "step": step,
-                "event_type": "repetitive_loop_detected",
-                "novelty_score": 0.6,
-                "description": f"Agent entered a repetitive loop near {center}.",
-            })
+            events.append(
+                {
+                    "episode": episode,
+                    "step": step,
+                    "event_type": "repetitive_loop_detected",
+                    "novelty_score": 0.6,
+                    "description": f"Agent entered a repetitive loop near {center}.",
+                }
+            )
 
         n_transitions = len(self.transitions)
         next_milestone = (n_transitions // 50) * 50
         if n_transitions > 0 and next_milestone > self._last_milestone:
             self._last_milestone = next_milestone
-            events.append({
-                "episode": episode,
-                "step": step,
-                "event_type": "state_transition_milestone",
-                "novelty_score": round(min(n_transitions / grid_cells, 1.0), 3),
-                "description": f"Agent discovered {n_transitions} unique state transitions.",
-            })
+            events.append(
+                {
+                    "episode": episode,
+                    "step": step,
+                    "event_type": "state_transition_milestone",
+                    "novelty_score": round(min(n_transitions / grid_cells, 1.0), 3),
+                    "description": f"Agent discovered {n_transitions} unique state transitions.",
+                }
+            )
 
         repeated = self.detect_repeated_motifs(min_count=5)
         if repeated:
             for motif, count in repeated[:3]:
                 if motif not in self._reported_motifs and count >= 5:
                     self._reported_motifs.add(motif)
-                    events.append({
-                        "episode": episode,
-                        "step": step,
-                        "event_type": "behavioral_motif_established",
-                        "novelty_score": round(min(count / 20, 1.0), 3),
-                        "description": f"Action motif {motif} repeated {count} times.",
-                    })
+                    events.append(
+                        {
+                            "episode": episode,
+                            "step": step,
+                            "event_type": "behavioral_motif_established",
+                            "novelty_score": round(min(count / 20, 1.0), 3),
+                            "description": f"Action motif {motif} repeated {count} times.",
+                        }
+                    )
 
         if events:
             self.detected_events.extend(events)
@@ -246,17 +251,20 @@ class PCAgent:
 
     def _build_network(self):
         obs_in = Linear(
-            shape=(self.obs_dim,), name=f"obs_in_{self.agent_id}",
+            shape=(self.obs_dim,),
+            name=f"obs_in_{self.agent_id}",
             activation=IdentityActivation(),
             energy=GaussianEnergy(),
         )
         hidden = Linear(
-            shape=(self.hidden_dim,), name=f"hidden_{self.agent_id}",
+            shape=(self.hidden_dim,),
+            name=f"hidden_{self.agent_id}",
             activation=TanhActivation(),
             energy=GaussianEnergy(),
         )
         obs_out = Linear(
-            shape=(self.obs_dim,), name=f"obs_out_{self.agent_id}",
+            shape=(self.obs_dim,),
+            name=f"obs_out_{self.agent_id}",
             activation=IdentityActivation(),
             energy=GaussianEnergy(),
         )
@@ -284,7 +292,11 @@ class PCAgent:
         }
         sk, self.rng_key = jax.random.split(self.rng_key)
         init_state = initialize_graph_state(
-            self.structure, batch_size, sk, clamps=clamps, params=self.params,
+            self.structure,
+            batch_size,
+            sk,
+            clamps=clamps,
+            params=self.params,
         )
         final_state = run_inference(self.params, init_state, clamps, self.structure)
         energy = 0.0
@@ -308,9 +320,7 @@ def compute_episode_metrics(
 ) -> Dict:
     errors = np.array(step_errors)
     unique_states = agent.pos_memory.n_unique()
-    total_retrievals = sum(
-        m.get("memory_retrievals", 0) for m in agent.memory.metadata[-200:]
-    )
+    total_retrievals = sum(m.get("memory_retrievals", 0) for m in agent.memory.metadata[-200:])
     n_transitions = len(agent.behavior.transitions)
     entropy = agent.behavior.navigation_entropy()
     repeated_motifs = len(agent.behavior.detect_repeated_motifs(min_count=3))
@@ -331,9 +341,7 @@ def compute_episode_metrics(
         "novelty_score": round(novelty, 4),
         "goals_reached": goals_reached,
         "total_reward": round(sum(step_rewards), 2),
-        "total_curiosity_reward": round(
-            sum(r for r in step_rewards if r != 10.0 and r != 0.0), 2
-        ),
+        "total_curiosity_reward": round(sum(r for r in step_rewards if r != 10.0 and r != 0.0), 2),
         "cooperation_events": 0,
         "communication_events": 0,
     }

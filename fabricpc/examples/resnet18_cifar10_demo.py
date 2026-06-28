@@ -45,36 +45,37 @@ from jax_setup import set_jax_flags_before_importing_jax
 
 set_jax_flags_before_importing_jax()
 
+import argparse
+import time
+
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-import argparse
-import time
 from custom_node import Conv2DNode
-from fabricpc.nodes import Linear, IdentityNode, SkipConnection
-from fabricpc.nodes.base import NodeBase, SlotSpec
-from fabricpc.core.types import NodeParams
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.core import InferenceSGDNormClip
-from fabricpc.graph_initialization import initialize_params
 from fabricpc.core.activations import (
-    IdentityActivation,
-    ReLUActivation,
-    TanhActivation,
     GeluActivation,
+    IdentityActivation,
     LeakyReLUActivation,
+    ReLUActivation,
     SoftmaxActivation,
+    TanhActivation,
 )
-from fabricpc.core.energy import GaussianEnergy, CrossEntropyEnergy
+from fabricpc.core.energy import CrossEntropyEnergy, GaussianEnergy
 from fabricpc.core.initializers import (
-    NormalInitializer,
     MuPCInitializer,
+    NormalInitializer,
     XavierInitializer,
 )
 from fabricpc.core.mupc import MuPCConfig
-from fabricpc.training import train_pcn, evaluate_pcn
+from fabricpc.core.topology import Edge
+from fabricpc.core.types import NodeParams
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.nodes import IdentityNode, Linear, SkipConnection
+from fabricpc.nodes.base import NodeBase, SlotSpec
+from fabricpc.training import evaluate_pcn, train_pcn
 from fabricpc.utils.data.dataloader import Cifar10Loader
 
 jax.config.update("jax_default_prng_impl", "threefry2x32")
@@ -119,16 +120,12 @@ class AugmentedCifar10Loader:
             flip_mask = rng.random(images.shape[0]) > 0.5
             images[flip_mask] = images[flip_mask, :, ::-1, :]
 
-            padded = np.pad(
-                images, ((0, 0), (pad, pad), (pad, pad), (0, 0)), mode="reflect"
-            )
+            padded = np.pad(images, ((0, 0), (pad, pad), (pad, pad), (0, 0)), mode="reflect")
             B, H, W, C = images.shape
             crop_y = rng.integers(0, 2 * pad + 1, size=B)
             crop_x = rng.integers(0, 2 * pad + 1, size=B)
             for i in range(B):
-                images[i] = padded[
-                    i, crop_y[i] : crop_y[i] + H, crop_x[i] : crop_x[i] + W, :
-                ]
+                images[i] = padded[i, crop_y[i] : crop_y[i] + H, crop_x[i] : crop_x[i] + W, :]
 
             yield images, labels
 
@@ -379,9 +376,7 @@ def build_resnet18(
         nodes=all_nodes,
         edges=all_edges,
         task_map=TaskMap(x=input_node, y=output),
-        inference=InferenceSGDNormClip(
-            eta_infer=eta_infer, infer_steps=infer_steps, max_norm=1.0
-        ),
+        inference=InferenceSGDNormClip(eta_infer=eta_infer, infer_steps=infer_steps, max_norm=1.0),
         scaling=scaling,
     )
 
@@ -442,9 +437,7 @@ def run_single_mupc(args):
     print(f"Total parameters: {total_params:,}")
 
     # Data
-    base_train_loader = Cifar10Loader(
-        "train", batch_size=args.batch_size, shuffle=True, seed=42
-    )
+    base_train_loader = Cifar10Loader("train", batch_size=args.batch_size, shuffle=True, seed=42)
     if args.no_augment:
         train_loader = base_train_loader
     else:
@@ -471,18 +464,13 @@ def run_single_mupc(args):
 
     def epoch_callback(epoch_idx, params, structure, config, rng_key):
         epoch_num = epoch_idx + 1
-        if eval_every > 0 and (
-            epoch_num % eval_every == 0 or epoch_num == args.num_epochs
-        ):
+        if eval_every > 0 and (epoch_num % eval_every == 0 or epoch_num == args.num_epochs):
             metrics = evaluate_pcn(params, structure, test_loader, config, eval_key)
             print(f"  Epoch {epoch_num}: accuracy={metrics['accuracy'] * 100:.2f}%")
             return metrics
         return None
 
-    print(
-        f"\nTraining for {args.num_epochs} epochs "
-        f"(JIT compilation on first batch)..."
-    )
+    print(f"\nTraining for {args.num_epochs} epochs (JIT compilation on first batch)...")
     start_time = time.time()
 
     trained_params, energy_history, _ = train_pcn(
@@ -497,15 +485,11 @@ def run_single_mupc(args):
     )
 
     elapsed = time.time() - start_time
-    print(
-        f"\nTraining time: {elapsed:.1f}s ({elapsed / args.num_epochs:.1f}s per epoch)"
-    )
+    print(f"\nTraining time: {elapsed:.1f}s ({elapsed / args.num_epochs:.1f}s per epoch)")
 
     # Final evaluation
     print("Final evaluation...")
-    metrics = evaluate_pcn(
-        trained_params, structure, test_loader, train_config, eval_key
-    )
+    metrics = evaluate_pcn(trained_params, structure, test_loader, train_config, eval_key)
     print(f"Test Accuracy: {metrics['accuracy'] * 100:.2f}%")
 
 
@@ -515,27 +499,13 @@ def run_single_mupc(args):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="ResNet-18 on CIFAR-10 (Predictive Coding)"
-    )
-    parser.add_argument(
-        "--num_epochs", type=int, default=2, help="Training epochs (default: 2)"
-    )
-    parser.add_argument(
-        "--batch_size", type=int, default=256, help="Batch size (default: 256)"
-    )
-    parser.add_argument(
-        "--infer_steps", type=int, default=80, help="Inference steps (default: 80)"
-    )
-    parser.add_argument(
-        "--eta_infer", type=float, default=0.1, help="Inference rate (default: 0.1)"
-    )
-    parser.add_argument(
-        "--lr", type=float, default=0.01, help="Learning rate (default: 0.001)"
-    )
-    parser.add_argument(
-        "--weight_decay", type=float, default=0.01, help="Weight decay (default: 0.01)"
-    )
+    parser = argparse.ArgumentParser(description="ResNet-18 on CIFAR-10 (Predictive Coding)")
+    parser.add_argument("--num_epochs", type=int, default=2, help="Training epochs (default: 2)")
+    parser.add_argument("--batch_size", type=int, default=256, help="Batch size (default: 256)")
+    parser.add_argument("--infer_steps", type=int, default=80, help="Inference steps (default: 80)")
+    parser.add_argument("--eta_infer", type=float, default=0.1, help="Inference rate (default: 0.1)")
+    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate (default: 0.001)")
+    parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay (default: 0.01)")
     parser.add_argument(
         "--activation",
         type=str,

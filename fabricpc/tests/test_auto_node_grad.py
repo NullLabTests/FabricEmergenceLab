@@ -5,28 +5,27 @@ Verifies that LinearExplicitGrad (using JAX autodiff) produces
 numerically equivalent gradients to Linear (using manual formulas).
 """
 
-import pytest
 import jax
 import jax.numpy as jnp
-
-from fabricpc.core.types import NodeState, NodeParams, NodeInfo
-from fabricpc.core.inference import gather_inputs, InferenceSGD
+import pytest
+from fabricpc.core.activations import (
+    IdentityActivation,
+    ReLUActivation,
+    SigmoidActivation,
+    TanhActivation,
+)
+from fabricpc.core.energy import GaussianEnergy
+from fabricpc.core.inference import InferenceSGD, gather_inputs
+from fabricpc.core.initializers import NormalInitializer
+from fabricpc.core.topology import Edge
+from fabricpc.core.types import NodeInfo, NodeParams, NodeState
+from fabricpc.graph_assembly import TaskMap, graph
+from fabricpc.graph_initialization import initialize_params
+from fabricpc.graph_initialization.state_initializer import initialize_graph_state
 from fabricpc.nodes import (
     Linear,
     LinearExplicitGrad,
 )
-from fabricpc.core.topology import Edge
-from fabricpc.graph_assembly import TaskMap, graph
-from fabricpc.graph_initialization import initialize_params
-from fabricpc.core.activations import (
-    IdentityActivation,
-    ReLUActivation,
-    TanhActivation,
-    SigmoidActivation,
-)
-from fabricpc.core.energy import GaussianEnergy
-from fabricpc.core.initializers import NormalInitializer
-from fabricpc.graph_initialization.state_initializer import initialize_graph_state
 
 
 @pytest.fixture
@@ -39,12 +38,8 @@ def create_graph(node_class, rng_key):
     """Create a small network using specified node class."""
     w_init = NormalInitializer(std=0.05)
     input_node = node_class(shape=(8,), name="input", weight_init=w_init)
-    hidden = node_class(
-        shape=(12,), activation=TanhActivation(), name="hidden", weight_init=w_init
-    )
-    output_node = node_class(
-        shape=(4,), activation=SigmoidActivation(), name="output", weight_init=w_init
-    )
+    hidden = node_class(shape=(12,), activation=TanhActivation(), name="hidden", weight_init=w_init)
+    output_node = node_class(shape=(4,), activation=SigmoidActivation(), name="output", weight_init=w_init)
 
     structure = graph(
         nodes=[input_node, hidden, output_node],
@@ -63,9 +58,7 @@ class TestLinearAutoGradNode:
     """Test that LinearExplicitGrad produces identical gradients to Linear."""
 
     @pytest.mark.parametrize("activation", ["identity", "relu", "tanh", "sigmoid"])
-    def test_forward_and_latent_grads_equivalence(
-        self, rng_key, activation, grad_tolerance
-    ):
+    def test_forward_and_latent_grads_equivalence(self, rng_key, activation, grad_tolerance):
         """Test that forward_and_latent_grads produces equivalent input gradients for different activations."""
         batch_size = 4
         input_dim = 6
@@ -75,10 +68,7 @@ class TestLinearAutoGradNode:
 
         edge_key = "src->dst:in"
         params = NodeParams(
-            weights={
-                edge_key: jax.random.normal(rngkey_weights, (input_dim, output_dim))
-                * 0.1
-            },
+            weights={edge_key: jax.random.normal(rngkey_weights, (input_dim, output_dim)) * 0.1},
             biases={"b": jnp.zeros((1, output_dim))},
         )
         inputs = {edge_key: jax.random.normal(rngkey_inputs, (batch_size, input_dim))}
@@ -143,36 +133,30 @@ class TestLinearAutoGradNode:
         state_linear, grads_linear, self_grad_linear = Linear.forward_and_latent_grads(
             params, inputs, node_state, node_info, is_clamped=True
         )
-        state_autograd, grads_autograd, self_grad_autograd = (
-            LinearExplicitGrad.forward_and_latent_grads(
-                params, inputs, node_state, node_info_explicit, is_clamped=True
-            )
+        state_autograd, grads_autograd, self_grad_autograd = LinearExplicitGrad.forward_and_latent_grads(
+            params, inputs, node_state, node_info_explicit, is_clamped=True
         )
 
         # Compare input gradients
         for edge_key in grads_linear:
-            max_diff = jnp.max(
-                jnp.abs(grads_linear[edge_key] - grads_autograd[edge_key])
+            max_diff = jnp.max(jnp.abs(grads_linear[edge_key] - grads_autograd[edge_key]))
+            assert max_diff < grad_tolerance, (
+                f"Input gradient mismatch for activation={activation}, edge={edge_key}: max diff = {max_diff}"
             )
-            assert (
-                max_diff < grad_tolerance
-            ), f"Input gradient mismatch for activation={activation}, edge={edge_key}: max diff = {max_diff}"
 
         # Compare state values
-        assert jnp.allclose(
-            state_linear.z_mu, state_autograd.z_mu, atol=grad_tolerance
-        ), f"z_mu mismatch for activation={activation}"
-        assert jnp.allclose(
-            state_linear.error, state_autograd.error, atol=grad_tolerance
-        ), f"error mismatch for activation={activation}"
-        assert jnp.allclose(
-            self_grad_linear, self_grad_autograd, atol=grad_tolerance
-        ), f"self-grad mismatch for activation={activation}"
+        assert jnp.allclose(state_linear.z_mu, state_autograd.z_mu, atol=grad_tolerance), (
+            f"z_mu mismatch for activation={activation}"
+        )
+        assert jnp.allclose(state_linear.error, state_autograd.error, atol=grad_tolerance), (
+            f"error mismatch for activation={activation}"
+        )
+        assert jnp.allclose(self_grad_linear, self_grad_autograd, atol=grad_tolerance), (
+            f"self-grad mismatch for activation={activation}"
+        )
 
     @pytest.mark.parametrize("activation", ["identity", "relu", "tanh", "sigmoid"])
-    def test_forward_and_weight_grads_equivalence(
-        self, rng_key, activation, grad_tolerance
-    ):
+    def test_forward_and_weight_grads_equivalence(self, rng_key, activation, grad_tolerance):
         """Test that forward_and_weight_grads produces equivalent param gradients for different activations."""
         batch_size = 4
         input_dim = 6
@@ -182,10 +166,7 @@ class TestLinearAutoGradNode:
 
         edge_key = "src->dst:in"
         params = NodeParams(
-            weights={
-                edge_key: jax.random.normal(rngkey_weights, (input_dim, output_dim))
-                * 0.1
-            },
+            weights={edge_key: jax.random.normal(rngkey_weights, (input_dim, output_dim)) * 0.1},
             biases={"b": jnp.zeros((1, output_dim))},
         )
         inputs = {edge_key: jax.random.normal(rngkey_inputs, (batch_size, input_dim))}
@@ -247,32 +228,24 @@ class TestLinearAutoGradNode:
         )
 
         # Compare forward_and_weight_grads results
-        state_linear, grads_linear = Linear.forward_and_weight_grads(
-            params, inputs, node_state, node_info
-        )
+        state_linear, grads_linear = Linear.forward_and_weight_grads(params, inputs, node_state, node_info)
         state_autograd, grads_autograd = LinearExplicitGrad.forward_and_weight_grads(
             params, inputs, node_state, node_info_explicit
         )
 
         # Compare weight gradients
         for edge_key in grads_linear.weights:
-            max_diff = jnp.max(
-                jnp.abs(
-                    grads_linear.weights[edge_key] - grads_autograd.weights[edge_key]
-                )
+            max_diff = jnp.max(jnp.abs(grads_linear.weights[edge_key] - grads_autograd.weights[edge_key]))
+            assert max_diff < grad_tolerance, (
+                f"Weight gradient mismatch for activation={activation}, edge={edge_key}: max diff = {max_diff}"
             )
-            assert (
-                max_diff < grad_tolerance
-            ), f"Weight gradient mismatch for activation={activation}, edge={edge_key}: max diff = {max_diff}"
 
         # Compare bias gradients
         for bias_key in grads_linear.biases:
-            max_diff = jnp.max(
-                jnp.abs(grads_linear.biases[bias_key] - grads_autograd.biases[bias_key])
+            max_diff = jnp.max(jnp.abs(grads_linear.biases[bias_key] - grads_autograd.biases[bias_key]))
+            assert max_diff < grad_tolerance, (
+                f"Bias gradient mismatch for activation={activation}, bias={bias_key}: max diff = {max_diff}"
             )
-            assert (
-                max_diff < grad_tolerance
-            ), f"Bias gradient mismatch for activation={activation}, bias={bias_key}: max diff = {max_diff}"
 
     def test_gradient_equivalence_full_network(self, rng_key, grad_tolerance):
         """Test gradient equivalence across a full network with inference."""
@@ -287,9 +260,7 @@ class TestLinearAutoGradNode:
             for edge_key in params_linear.nodes[node_name].weights:
                 w_linear = params_linear.nodes[node_name].weights[edge_key]
                 w_autograd = params_autograd.nodes[node_name].weights[edge_key]
-                assert jnp.allclose(
-                    w_linear, w_autograd
-                ), f"Params differ for {node_name}/{edge_key}"
+                assert jnp.allclose(w_linear, w_autograd), f"Params differ for {node_name}/{edge_key}"
 
         # Create identical input/output data
         rngkey_x, rngkey_y, rngkey_state = jax.random.split(rng_key, 3)
@@ -365,9 +336,7 @@ class TestLinearAutoGradNode:
 
             # Compare
             for edge_key in grads_linear:
-                max_diff = jnp.max(
-                    jnp.abs(grads_linear[edge_key] - grads_autograd[edge_key])
+                max_diff = jnp.max(jnp.abs(grads_linear[edge_key] - grads_autograd[edge_key]))
+                assert max_diff < grad_tolerance, (
+                    f"Input gradient mismatch at {node_name} for {edge_key}: max diff = {max_diff}"
                 )
-                assert (
-                    max_diff < grad_tolerance
-                ), f"Input gradient mismatch at {node_name} for {edge_key}: max diff = {max_diff}"

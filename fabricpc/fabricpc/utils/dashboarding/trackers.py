@@ -114,9 +114,7 @@ class AimExperimentTracker:
         self._initialized = True
         if not is_aim_available():
             self._run = None
-            print(
-                "WARNING: Aim is not installed. Tracking disabled. Install with: pip install aim"
-            )
+            print("WARNING: Aim is not installed. Tracking disabled. Install with: pip install aim")
             return False
 
         try:

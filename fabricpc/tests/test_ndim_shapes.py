@@ -6,20 +6,18 @@ Verifies that multi-dimensional node shapes (2D images, 3D NHWC tensors)
 work correctly through graph construction, inference, and training.
 """
 
-import pytest
 import jax
 import jax.numpy as jnp
-
-from fabricpc.nodes import Linear
+import optax
+from conftest import with_inference
+from fabricpc.core.activations import ReLUActivation, SigmoidActivation, TanhActivation
+from fabricpc.core.inference import InferenceSGD
 from fabricpc.core.topology import Edge
 from fabricpc.graph_assembly import TaskMap, graph
 from fabricpc.graph_initialization import initialize_params
 from fabricpc.graph_initialization.state_initializer import initialize_graph_state
-from fabricpc.core.inference import InferenceSGD
-import optax
+from fabricpc.nodes import Linear
 from fabricpc.training import train_step
-from fabricpc.core.activations import ReLUActivation, TanhActivation, SigmoidActivation
-from conftest import with_inference
 
 
 class TestNDimShapes:
@@ -28,9 +26,7 @@ class TestNDimShapes:
     def test_2d_shape(self, rng_key):
         """Test node with 2D shape: shape=(28, 28) - image without channels."""
         node_image = Linear(shape=(28, 28), name="image")
-        node_hidden = Linear(
-            shape=(128,), activation=ReLUActivation(), flatten_input=True, name="hidden"
-        )
+        node_hidden = Linear(shape=(128,), activation=ReLUActivation(), flatten_input=True, name="hidden")
         node_output = Linear(shape=(10,), name="output")
 
         structure = graph(
@@ -58,13 +54,9 @@ class TestNDimShapes:
         y = jax.random.normal(rng_key, (batch_size, 10))
         clamps = {"image": x, "output": y}
 
-        state = initialize_graph_state(
-            structure, batch_size, rng_key, clamps=clamps, params=params
-        )
+        state = initialize_graph_state(structure, batch_size, rng_key, clamps=clamps, params=params)
         struct_mod = with_inference(structure, eta_infer=0.1, infer_steps=5)
-        final_state = type(struct_mod.config["inference"]).run_inference(
-            params, state, clamps, struct_mod
-        )
+        final_state = type(struct_mod.config["inference"]).run_inference(params, state, clamps, struct_mod)
 
         assert final_state.nodes["image"].z_latent.shape == (batch_size, 28, 28)
         assert final_state.nodes["hidden"].z_latent.shape == (batch_size, 128)
@@ -73,9 +65,7 @@ class TestNDimShapes:
     def test_3d_shape(self, rng_key):
         """Test node with 3D shape: shape=(28, 28, 1) - image with channels (NHWC)."""
         node_image = Linear(shape=(28, 28, 1), name="image")
-        node_hidden = Linear(
-            shape=(64,), activation=TanhActivation(), flatten_input=True, name="hidden"
-        )
+        node_hidden = Linear(shape=(64,), activation=TanhActivation(), flatten_input=True, name="hidden")
         node_output = Linear(shape=(10,), name="output")
 
         structure = graph(
@@ -99,13 +89,9 @@ class TestNDimShapes:
         y = jax.random.normal(rng_key, (batch_size, 10))
         clamps = {"image": x, "output": y}
 
-        state = initialize_graph_state(
-            structure, batch_size, rng_key, clamps=clamps, params=params
-        )
+        state = initialize_graph_state(structure, batch_size, rng_key, clamps=clamps, params=params)
         struct_mod = with_inference(structure, eta_infer=0.1, infer_steps=5)
-        final_state = type(struct_mod.config["inference"]).run_inference(
-            params, state, clamps, struct_mod
-        )
+        final_state = type(struct_mod.config["inference"]).run_inference(params, state, clamps, struct_mod)
 
         assert final_state.nodes["image"].z_latent.shape == (batch_size, 28, 28, 1)
         assert final_state.nodes["hidden"].z_latent.shape == (batch_size, 64)
@@ -146,13 +132,9 @@ class TestNDimShapes:
         y = jax.random.normal(rng_key, (batch_size, 10))
         clamps = {"image": x, "output": y}
 
-        state = initialize_graph_state(
-            structure, batch_size, rng_key, clamps=clamps, params=params
-        )
+        state = initialize_graph_state(structure, batch_size, rng_key, clamps=clamps, params=params)
         struct_mod = with_inference(structure, eta_infer=0.1, infer_steps=5)
-        final_state = type(struct_mod.config["inference"]).run_inference(
-            params, state, clamps, struct_mod
-        )
+        final_state = type(struct_mod.config["inference"]).run_inference(params, state, clamps, struct_mod)
 
         assert final_state.nodes["image"].z_latent.shape == (batch_size, 28, 28)
         assert final_state.nodes["hidden1"].z_latent.shape == (batch_size, 256)
